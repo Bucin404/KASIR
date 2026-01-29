@@ -1,5 +1,5 @@
 [versions]
-agp = "8.12.3"
+agp = "8.7.3"
 kotlin = "2.0.21"
 ksp = "2.0.21-1.0.29"
 coreKtx = "1.17.0"
@@ -20,6 +20,7 @@ itext = "8.0.7"
 gson = "2.12.0"
 securityCrypto = "1.1.0-alpha06"
 coil = "3.0.4"
+splashscreen = "1.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -54,6 +55,7 @@ itext-core = { group = "com.itextpdf", name = "itext-core", version.ref = "itext
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "splashscreen" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

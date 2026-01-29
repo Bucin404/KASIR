@@ -2,23 +2,68 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Bluetooth Permissions untuk Receipt Printer -->
-    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <!-- ========== CAMERA & PHOTO PERMISSIONS ========== -->
+    <!-- Untuk upload foto menu items -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    
+    <!-- ========== STORAGE PERMISSIONS ========== -->
+    <!-- Untuk menyimpan dan membaca foto, Excel, PDF -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"
+        tools:ignore="ScopedStorage" />
+    <!-- Android 13+ media permissions -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    
+    <!-- ========== BLUETOOTH PERMISSIONS ========== -->
+    <!-- Untuk koneksi ke printer Bluetooth -->
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+    <!-- Legacy Bluetooth (Android 11 and below) -->
+    <uses-permission android:name="android.permission.BLUETOOTH" 
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" 
+        android:maxSdkVersion="30" />
+    <!-- New Bluetooth (Android 12+) -->
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
-        android:usesPermissionFlags="neverForLocation" />
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="31" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <!-- Location for Bluetooth device discovery (optional) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"
+        android:maxSdkVersion="30" />
     
-    <!-- Storage Permissions untuk Excel/PDF Export -->
+    <!-- ========== NOTIFICATION PERMISSIONS ========== -->
+    <!-- Post notifications (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    
+    <!-- ========== INTERNET PERMISSIONS ========== -->
+    <!-- Untuk online features (sync, backup, update) -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     
-    <!-- Hardware features -->
-    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+    <!-- ========== VIBRATION ========== -->
+    <!-- Untuk feedback notifikasi -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     
-    <!-- Tablet Screen Sizes Support -->
+    <!-- ========== WAKE LOCK ========== -->
+    <!-- Untuk menjaga device tetap aktif saat transaksi -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    
+    <!-- ========== FOREGROUND SERVICE ========== -->
+    <!-- Untuk background printing atau sync -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    
+    <!-- ========== TABLET SCREEN SIZES SUPPORT ========== -->
     <supports-screens
         android:smallScreens="false"
         android:normalScreens="true"
@@ -37,21 +82,26 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.App.Starting"
         android:enableOnBackInvokedCallback="true"
-        tools:targetApi="31">
+        android:hardwareAccelerated="true"
+        android:largeHeap="true"
+        tools:targetApi="34">
         
+        <!-- ========== MAIN ACTIVITY ========== -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:theme="@style/Theme.App.Starting"
             android:screenOrientation="fullSensor"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
         
-        <!-- FileProvider untuk sharing Excel/PDF files -->
+        <!-- ========== FILE PROVIDER ========== -->
+        <!-- Untuk sharing Excel/PDF files dan photo picker -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
