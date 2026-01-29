@@ -9,14 +9,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import com.example.kasir.ui.navigation.KasirNavigation
-import com.example.kasir.ui.theme.KASIRTheme
+import com.example.kasir.ui.theme.KasirTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            KASIRTheme {
+            KasirTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     KasirNavigation(modifier = Modifier.padding(innerPadding))
                 }
