@@ -1,7 +1,7 @@
-package com.kasir
+package com.example.kasir
 
 import android.app.Application
-import com.kasir.data.KasirDatabase
+import com.example.kasir.data.local.database.KasirDatabase
 
 class KasirApplication : Application() {
     
@@ -18,5 +18,9 @@ class KasirApplication : Application() {
     companion object {
         lateinit var instance: KasirApplication
             private set
+            
+        fun getDatabase(): KasirDatabase {
+            return instance.database
+        }
     }
 }

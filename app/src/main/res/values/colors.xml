@@ -1,58 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Primary Colors (Blue-Green Theme) -->
-    <color name="primary">#3498DB</color>
-    <color name="primary_dark">#2980B9</color>
-    <color name="primary_light">#5DADE2</color>
-    
-    <!-- Secondary Colors -->
-    <color name="secondary">#2ECC71</color>
-    <color name="secondary_dark">#27AE60</color>
-    <color name="secondary_light">#58D68D</color>
-    
-    <!-- Accent -->
-    <color name="accent">#1ABC9C</color>
-    <color name="accent_dark">#16A085</color>
-    
-    <!-- Status Colors -->
-    <color name="success">#2ECC71</color>
-    <color name="warning">#F39C12</color>
-    <color name="danger">#E74C3C</color>
-    <color name="info">#3498DB</color>
-    
-    <!-- Background Colors (Dark Theme) -->
-    <color name="background">#0C141C</color>
-    <color name="surface">#1A252F</color>
-    <color name="surface_variant">#2C3E50</color>
-    
-    <!-- Text Colors -->
-    <color name="text_primary">#FFFFFF</color>
-    <color name="text_secondary">#BDC3C7</color>
-    <color name="text_tertiary">#95A5A6</color>
-    
-    <!-- Neutral Colors -->
-    <color name="white">#FFFFFF</color>
-    <color name="black">#000000</color>
-    <color name="gray_light">#ECF0F1</color>
-    <color name="gray">#95A5A6</color>
-    <color name="gray_dark">#7F8C8D</color>
-    
-    <!-- Material3 Colors -->
-    <color name="md_theme_primary">#3498DB</color>
-    <color name="md_theme_onPrimary">#FFFFFF</color>
-    <color name="md_theme_primaryContainer">#2980B9</color>
-    <color name="md_theme_onPrimaryContainer">#FFFFFF</color>
-    
-    <color name="md_theme_secondary">#2ECC71</color>
-    <color name="md_theme_onSecondary">#FFFFFF</color>
-    <color name="md_theme_secondaryContainer">#27AE60</color>
-    <color name="md_theme_onSecondaryContainer">#FFFFFF</color>
-    
-    <color name="md_theme_background">#0C141C</color>
-    <color name="md_theme_onBackground">#FFFFFF</color>
-    <color name="md_theme_surface">#1A252F</color>
-    <color name="md_theme_onSurface">#FFFFFF</color>
-    
-    <color name="md_theme_error">#E74C3C</color>
-    <color name="md_theme_onError">#FFFFFF</color>
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
 </resources>
