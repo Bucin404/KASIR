@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kasir Modern - Blue Green Premium</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💎</text></svg>">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0f2a3d">
+    <style>
+        /* Advanced animations */
+        @keyframes floatGlow {
+            0%, 100% { 
+                transform: translateY(0) scale(1);
+                filter: drop-shadow(0 5px 15px rgba(52, 152, 219, 0.3));
+            }
+            50% { 
+                transform: translateY(-15px) scale(1.05);
+                filter: drop-shadow(0 15px 30px rgba(52, 152, 219, 0.5));
+            }
+        }
+        
+        @keyframes shimmerText {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+        
+        @keyframes pulseBorder {
+            0%, 100% { border-color: rgba(52, 152, 219, 0.4); }
+            50% { border-color: rgba(46, 204, 113, 0.6); }
+        }
+        
+        @keyframes slideInFromLeft {
+            from { transform: translateX(-30px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes slideInFromRight {
+            from { transform: translateX(30px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes scaleIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
+        @keyframes cartPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        /* Badge animasi */
+        .badge-popular {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+        }
+        
+        /* Progress bar animation */
+        @keyframes progressFill {
+            from { width: 0; }
+            to { width: var(--progress-width); }
+        }
+        
+        /* Notification animation */
+        @keyframes notificationSlideIn {
+            from { 
+                transform: translateX(100%) translateY(-50%);
+                opacity: 0;
+            }
+            to { 
+                transform: translateX(0) translateY(-50%);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes notificationSlideOut {
+            from { 
+                transform: translateX(0) translateY(-50%);
+                opacity: 1;
+            }
+            to { 
+                transform: translateX(100%) translateY(-50%);
+                opacity: 0;
+            }
+        }
+        
+        /* Quick stats animation */
+        @keyframes counter {
+            from { --num: 0; }
+            to { --num: var(--end); }
+        }
+        
+        @property --num {
+            syntax: '<integer>';
+            initial-value: 0;
+            inherits: false;
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Elements -->
+    <div class="bg-glow-orb" style="top: 10%; left: 5%;"></div>
+    <div class="bg-glow-orb" style="top: 70%; right: 10%;"></div>
+    <div class="bg-glow-orb" style="top: 40%; left: 80%;"></div>
+    
+    <!-- Quick Stats Overlay -->
+    <div class="quick-stats-overlay" id="quickStats">
+        <div class="quick-stats-container">
+            <div class="quick-stat-item">
+                <div class="quick-stat-icon">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <div class="quick-stat-content">
+                    <div class="quick-stat-value" id="todayTransactions">0</div>
+                    <div class="quick-stat-label">Transaksi Hari Ini</div>
+                </div>
+            </div>
+            <div class="quick-stat-item">
+                <div class="quick-stat-icon">
+                    <i class="fas fa-money-bill-wave"></i>
+                </div>
+                <div class="quick-stat-content">
+                    <div class="quick-stat-value" id="todayIncome">Rp 0</div>
+                    <div class="quick-stat-label">Pendapatan</div>
+                </div>
+            </div>
+            <div class="quick-stat-item">
+                <div class="quick-stat-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="quick-stat-content">
+                    <div class="quick-stat-value" id="avgTransaction">Rp 0</div>
+                    <div class="quick-stat-label">Rata-rata</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Enhanced Header -->
+        <header class="header">
+            <div class="header-top">
+                <div class="header-brand">
+                    <div class="logo-icon">
+                        <i class="fas fa-cash-register"></i>
+                    </div>
+                    <div class="brand-text">
+                        <h1>Kasir OME</h1>
+                        <p class="tagline">Sistem Kasir Restoran</p>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="header-btn" id="refreshStats" title="Refresh Statistik">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button class="header-btn" id="toggleStats" title="Toggle Statistik">
+                        <i class="fas fa-chart-bar"></i>
+                    </button>
+                    <button class="header-btn" id="darkModeToggle" title="Mode Gelap/Terang">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="header-bottom">
+                <div class="header-info-grid">
+                    <div class="info-card time-card">
+                        <div class="info-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="info-content">
+                            <div class="info-label">Waktu Sistem</div>
+                            <div id="currentTime" class="info-value">Loading...</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-card cashier-card">
+                        <div class="info-icon">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                        <div class="info-content">
+                            <div class="info-label">Kasir Aktif</div>
+                            <div class="info-value" id="userStatus">Kasir Utama</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-card session-card">
+                        <div class="info-icon">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <div class="info-content">
+                            <div class="info-label">Session ID</div>
+                            <div class="info-value" id="sessionId">#{{ now.strftime('%H%M%S') }}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-card status-card">
+                        <div class="info-icon">
+                            <i class="fas fa-circle"></i>
+                        </div>
+                        <div class="info-content">
+                            <div class="info-label">Status Sistem</div>
+                            <div class="info-value active">Online</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Stats Bar (Hidden by default, can be toggled) -->
+            <div class="stats-bar" id="statsBar" style="display: none;">
+                <div class="stats-container">
+                    <div class="stat-item">
+                        <span class="stat-label">Items Terjual:</span>
+                        <span class="stat-value" id="statItemsSold">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total Items:</span>
+                        <span class="stat-value" id="statTotalItems">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Keranjang Aktif:</span>
+                        <span class="stat-value" id="statActiveCart">0 items</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="content-wrapper">
+            <!-- Left Panel: Menu -->
+            <section class="menu-section">
+                <div class="menu-header">
+                    <div class="menu-title-section">
+                        <h2>
+                            <i class="fas fa-utensils"></i>
+                            Menu Makanan & Minuman
+                        </h2>
+                        <div class="menu-subtitle">
+                            <span class="menu-count" id="menuCount">{{ menu|length }} items</span>
+                            <span class="menu-filter-info" id="filterInfo">Semua kategori</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="menu-actions">
+                        <button class="menu-action-btn" id="showPopular">
+                            <i class="fas fa-fire"></i>
+                            <span>Populer</span>
+                        </button>
+                        <button class="menu-action-btn" id="showAll">
+                            <i class="fas fa-list"></i>
+                            <span>Semua</span>
+                        </button>
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchMenu" placeholder="Cari menu...">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category Filter -->
+                <div class="category-filter-container">
+                    <div class="category-scroll">
+                        <button class="category-btn active" data-category="all">
+                            <i class="fas fa-th-large"></i>
+                            <span>Semua</span>
+                        </button>
+                        {% for category in categories %}
+                        <button class="category-btn" data-category="{{ category }}">
+                            <i class="{{ 'fas fa-utensils' if category == 'Makanan' else 'fas fa-glass-martini-alt' if category == 'Minuman' else 'fas fa-ice-cream' }}"></i>
+                            <span>{{ category }}</span>
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Popular Items Section -->
+                <div class="popular-section">
+                    <h3 class="popular-title">
+                        <i class="fas fa-crown"></i>
+                        Menu Terpopuler
+                    </h3>
+                    <div class="popular-grid" id="popularGrid">
+                        {% for item in popular_items[:4] %}
+                        <div class="popular-item" data-id="{{ item.id }}">
+                            <div class="popular-badge">
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <img src="{{ item.image }}" alt="{{ item.name }}" class="popular-image">
+                            <div class="popular-content">
+                                <h4>{{ item.name }}</h4>
+                                <div class="popular-price">{{ item.price|int|format_number }} IDR</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Menu Grid -->
+                <div class="menu-grid" id="menuGrid">
+                    <!-- Loading akan diisi JavaScript -->
+                </div>
+                
+                <!-- Menu Footer -->
+                <div class="menu-footer">
+                    <div class="menu-stats">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Klik item untuk detail, drag untuk tambah cepat</span>
+                    </div>
+                    <button class="scroll-top-btn" id="scrollToTop">
+                        <i class="fas fa-arrow-up"></i>
+                        Ke Atas
+                    </button>
+                </div>
+            </section>
+
+            <!-- Right Panel: Cart -->
+            <section class="cart-section">
+                <!-- Cart Header dengan animasi -->
+                <div class="cart-header">
+                    <div class="cart-title-section">
+                        <h2>
+                            <i class="fas fa-shopping-cart cart-icon"></i>
+                            Keranjang Belanja
+                        </h2>
+                        <div class="cart-subtitle">
+                            <span class="cart-timer" id="cartTimer">00:00</span>
+                            <span class="cart-status" id="cartStatus">Siap</span>
+                        </div>
+                    </div>
+                    
+                    <div class="cart-header-actions">
+                        <button class="cart-action-btn" id="saveCart" title="Simpan Keranjang">
+                            <i class="fas fa-save"></i>
+                        </button>
+                        <button class="cart-action-btn" id="loadCart" title="Muat Keranjang">
+                            <i class="fas fa-folder-open"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="cart-count-container" id="cartCountContainer">
+                        <div class="cart-count" id="cartCount">0</div>
+                    </div>
+                </div>
+
+                <!-- Cart Container dengan animasi masuk -->
+                <div class="cart-container">
+                    <!-- Cart Items Container -->
+                    <div class="cart-items-container" id="cartItemsContainer">
+                        <!-- Empty State -->
+                        <div class="cart-empty-state" id="cartEmptyState">
+                            <div class="cart-empty-state-content">
+                                <div class="cart-empty-icon">
+                                    <i class="fas fa-shopping-basket"></i>
+                                </div>
+                                <h3>Keranjang Masih Kosong</h3>
+                                <p>Tambahkan item dari menu untuk memulai transaksi</p>
+                                
+                                <div class="cart-empty-features">
+                                    <div class="cart-empty-feature">
+                                        <i class="fas fa-mouse-pointer"></i>
+                                        <span>Klik item menu untuk memilih</span>
+                                    </div>
+                                    <div class="cart-empty-feature">
+                                        <i class="fas fa-sliders-h"></i>
+                                        <span>Atur jumlah dengan +/-</span>
+                                    </div>
+                                    <div class="cart-empty-feature">
+                                        <i class="fas fa-bolt"></i>
+                                        <span>Enter untuk pembayaran cepat</span>
+                                    </div>
+                                </div>
+                                
+                                <button class="cart-empty-cta" onclick="scrollToMenu()">
+                                    <i class="fas fa-utensils"></i>
+                                    Lihat Menu
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Cart Items List -->
+                        <div class="cart-items" id="cartItems">
+                            <!-- Items akan diisi JavaScript -->
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Actions Bar -->
+                    <div class="cart-quick-actions" id="cartQuickActions" style="display: none;">
+                        <button class="quick-action-btn" onclick="updateAllQuantities(1)">
+                            <i class="fas fa-plus"></i>
+                            Tambah Semua
+                        </button>
+                        <button class="quick-action-btn" onclick="updateAllQuantities(-1)">
+                            <i class="fas fa-minus"></i>
+                            Kurangi Semua
+                        </button>
+                        <button class="quick-action-btn" onclick="clearCart()">
+                            <i class="fas fa-trash"></i>
+                            Kosongkan
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="summary" id="summarySection">
+                    <div class="summary-header">
+                        <h4>
+                            <i class="fas fa-receipt"></i>
+                            Ringkasan Pesanan
+                        </h4>
+                        <button class="summary-edit" id="editSummary">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="summary-details">
+                        <div class="summary-row">
+                            <span>Subtotal:</span>
+                            <span id="subtotal">Rp 0</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Pajak (10%):</span>
+                            <span id="tax">Rp 0</span>
+                        </div>
+                        <div class="summary-row discount-row">
+                            <span>Diskon:</span>
+                            <div class="discount-control">
+                                <button class="discount-btn" onclick="applyDiscount(5)">5%</button>
+                                <button class="discount-btn" onclick="applyDiscount(10)">10%</button>
+                                <button class="discount-btn" onclick="applyDiscount(0)">Reset</button>
+                            </div>
+                        </div>
+                        <div class="summary-row total">
+                            <span>Total Pembayaran:</span>
+                            <span id="total">Rp 0</span>
+                        </div>
+                    </div>
+                    
+                    <div class="summary-stats">
+                        <div class="stat-circle">
+                            <div class="stat-circle-inner">
+                                <span id="itemCount">0</span>
+                                <small>Items</small>
+                            </div>
+                        </div>
+                        <div class="stat-circle">
+                            <div class="stat-circle-inner">
+                                <span id="uniqueItems">0</span>
+                                <small>Jenis</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Section Enhanced -->
+                <div class="payment-section">
+                    <div class="payment-header">
+                        <h4>
+                            <i class="fas fa-credit-card"></i>
+                            Pembayaran
+                        </h4>
+                        <div class="payment-methods">
+                            <button class="method-btn active" data-method="cash">
+                                <i class="fas fa-money-bill-wave"></i>
+                                Tunai
+                            </button>
+                            <button class="method-btn" data-method="card">
+                                <i class="fas fa-credit-card"></i>
+                                Kartu
+                            </button>
+                            <button class="method-btn" data-method="qris">
+                                <i class="fas fa-qrcode"></i>
+                                QRIS
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="payment-input-group">
+                        <div class="payment-input-container">
+                            <label for="paymentAmount">
+                                <i class="fas fa-money-check-alt"></i>
+                                Jumlah Pembayaran
+                            </label>
+                            <div class="payment-input-wrapper">
+                                <span class="currency">Rp</span>
+                                <input type="text" 
+                                       id="paymentAmount" 
+                                       class="payment-input" 
+                                       placeholder="0"
+                                       inputmode="numeric"
+                                       oninput="formatPaymentInput(this)"
+                                       autocomplete="off">
+                            </div>
+                        </div>
+                        
+                        <div class="payment-quick-amounts">
+                            <button class="amount-btn" onclick="setPaymentAmount(50000)">50K</button>
+                            <button class="amount-btn" onclick="setPaymentAmount(100000)">100K</button>
+                            <button class="amount-btn" onclick="setPaymentAmount(200000)">200K</button>
+                            <button class="amount-btn" onclick="setPaymentAmount(500000)">500K</button>
+                        </div>
+                    </div>
+                    
+                    <div class="payment-actions">
+                        <button class="pay-btn checkout" id="payBtn">
+                            <i class="fas fa-check-circle"></i>
+                            Proses Pembayaran
+                            <span class="shortcut">(Enter)</span>
+                        </button>
+                        <button class="pay-btn hold" id="holdBtn">
+                            <i class="fas fa-pause"></i>
+                            Tahan Pesanan
+                        </button>
+                        <button class="pay-btn clear" id="clearBtn">
+                            <i class="fas fa-trash-alt"></i>
+                            Batal
+                        </button>
+                    </div>
+                    
+                    <div class="payment-hints">
+                        <div class="hint-item">
+                            <i class="fas fa-lightbulb"></i>
+                            <span>Tekan <kbd>Enter</kbd> untuk bayar cepat</span>
+                        </div>
+                        <div class="hint-item">
+                            <i class="fas fa-bolt"></i>
+                            <span>Double klik item untuk edit cepat</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        
+        <!-- Bottom Bar untuk Mobile -->
+        <div class="mobile-bottom-bar">
+            <button class="mobile-nav-btn active" onclick="scrollToMenu()">
+                <i class="fas fa-utensils"></i>
+                <span>Menu</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="scrollToCart()">
+                <i class="fas fa-shopping-cart"></i>
+                <span>Keranjang</span>
+                <span class="mobile-cart-badge" id="mobileCartBadge">0</span>
+            </button>
+            <button class="mobile-nav-btn" onclick="showRecentTransactions()">
+                <i class="fas fa-history"></i>
+                <span>Riwayat</span>
+            </button>
+            <button class="mobile-nav-btn" id="mobileSettings">
+                <i class="fas fa-cog"></i>
+                <span>Settings</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Enhanced Modal -->
+    <div class="modal-overlay" id="strukModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="fas fa-receipt"></i>
+                    <h3>Struk Pembayaran</h3>
+                </div>
+                <div class="modal-actions">
+                    <button class="modal-action-btn" id="emailStruk" title="Email Struk">
+                        <i class="fas fa-envelope"></i>
+                    </button>
+                    <button class="modal-action-btn" id="shareStruk" title="Share Struk">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                    <button class="modal-close" id="closeStruk">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div id="strukContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn primary" id="printStruk">
+                    <i class="fas fa-print"></i>
+                    Cetak Struk
+                </button>
+                <button class="modal-btn secondary" onclick="closeStruk()">
+                    <i class="fas fa-times"></i>
+                    Tutup
+                </button>
+                <button class="modal-btn success" id="newTransaction">
+                    <i class="fas fa-plus"></i>
+                    Transaksi Baru
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Transactions Modal -->
+    <div class="modal-overlay" id="transactionsModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="fas fa-history"></i>
+                    <h3>Riwayat Transaksi</h3>
+                </div>
+                <button class="modal-close" onclick="closeTransactionsModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="transactions-list" id="transactionsList">
+                    <!-- Riwayat akan diisi JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Item Detail Modal -->
+    <div class="modal-overlay" id="itemDetailModal">
+        <div class="modal-container detail-modal">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <i class="fas fa-info-circle"></i>
+                    <h3 id="detailTitle">Detail Item</h3>
+                </div>
+                <button class="modal-close" onclick="closeItemDetail()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="itemDetailContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Loading Overlay -->
+    <div id="loading" class="loading-overlay">
+        <div class="loading-container">
+            <div class="loading-spinner">
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+                <div class="spinner-ring"></div>
+                <div class="spinner-center"></div>
+            </div>
+            <div class="loading-content">
+                <h3 class="loading-title" id="loadingTitle">Memproses...</h3>
+                <p class="loading-text" id="loadingText">Mohon tunggu sebentar</p>
+                <div class="loading-progress">
+                    <div class="progress-bar" id="loadingProgress"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification System -->
+    <div id="notificationSystem">
+        <!-- Notifications will be inserted here -->
+    </div>
+
+    <!-- Audio Elements for Feedback -->
+    <audio id="addSound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="removeSound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="checkoutSound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-cash-register-purchase-875.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- Template untuk notification -->
+    <template id="notificationTemplate">
+        <div class="notification">
+            <div class="notification-icon"></div>
+            <div class="notification-content">
+                <div class="notification-title"></div>
+                <div class="notification-message"></div>
+            </div>
+            <button class="notification-close">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="notification-progress"></div>
+        </div>
+    </template>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        // Global variables
+        let appVersion = '2.0.0';
+        let sessionStartTime = new Date();
+        
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize with fade in animation
+            document.body.style.opacity = '0';
+            setTimeout(() => {
+                document.body.style.transition = 'opacity 0.5s ease';
+                document.body.style.opacity = '1';
+            }, 100);
+            
+            // Start background animations
+            startBackgroundAnimations();
+            
+            // Initialize all components
+            initializeApp();
+            
+            // Load initial data
+            loadInitialData();
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Start timers
+            startTimers();
+            
+            // Log app start
+            console.log(`🚀 Kasir Modern v${appVersion} started at ${sessionStartTime}`);
+        });
+        
+        function initializeApp() {
+            // Setup header interactions
+            document.getElementById('refreshStats').addEventListener('click', refreshStats);
+            document.getElementById('toggleStats').addEventListener('click', toggleStats);
+            document.getElementById('darkModeToggle').addEventListener('click', toggleDarkMode);
+            
+            // Setup cart interactions
+            document.getElementById('saveCart').addEventListener('click', saveCart);
+            document.getElementById('loadCart').addEventListener('click', loadCart);
+            document.getElementById('holdBtn').addEventListener('click', holdOrder);
+            
+            // Setup modal interactions
+            document.getElementById('emailStruk').addEventListener('click', emailStruk);
+            document.getElementById('shareStruk').addEventListener('click', shareStruk);
+            document.getElementById('newTransaction').addEventListener('click', newTransaction);
+            
+            // Setup mobile navigation
+            document.getElementById('mobileSettings').addEventListener('click', showSettings);
+            
+            // Setup search functionality
+            document.getElementById('searchMenu').addEventListener('input', searchMenu);
+            document.getElementById('showPopular').addEventListener('click', showPopularItems);
+            document.getElementById('showAll').addEventListener('click', showAllItems);
+            document.getElementById('scrollToTop').addEventListener('click', scrollToTop);
+            
+            // Setup edit summary
+            document.getElementById('editSummary').addEventListener('click', editSummary);
+            
+            // Setup payment methods
+            document.querySelectorAll('.method-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    // You can add payment method specific logic here
+                });
+            });
+            
+            // Setup drag and drop for menu items
+            setupDragAndDrop();
+            
+            // Setup keyboard shortcuts
+            setupKeyboardShortcuts();
+        }
+        
+        function loadInitialData() {
+            // Load menu
+            loadMenu();
+            
+            // Load today's stats
+            loadTodayStats();
+            
+            // Load recent transactions
+            loadRecentTransactions();
+            
+            // Check for saved cart
+            checkSavedCart();
+        }
+        
+        function setupEventListeners() {
+            // Window resize
+            window.addEventListener('resize', handleResize);
+            
+            // Before unload
+            window.addEventListener('beforeunload', handleBeforeUnload);
+            
+            // Online/offline detection
+            window.addEventListener('online', updateOnlineStatus);
+            window.addEventListener('offline', updateOnlineStatus);
+            
+            // Click outside modals
+            document.addEventListener('click', handleOutsideClick);
+        }
+        
+        function startTimers() {
+            // Update clock every second
+            updateClock();
+            setInterval(updateClock, 1000);
+            
+            // Update cart timer
+            updateCartTimer();
+            setInterval(updateCartTimer, 60000);
+            
+            // Auto-save cart every 2 minutes
+            setInterval(autoSaveCart, 120000);
+            
+            // Update stats every 30 seconds
+            setInterval(loadTodayStats, 30000);
+        }
+        
+        function startBackgroundAnimations() {
+            // Animate glow orbs
+            const orbs = document.querySelectorAll('.bg-glow-orb');
+            orbs.forEach((orb, index) => {
+                orb.style.animation = `floatGlow ${8 + index * 2}s ease-in-out infinite`;
+                orb.style.animationDelay = `${index}s`;
+            });
+            
+            // Create floating particles
+            createParticles();
+        }
+        
+        function createParticles() {
+            const colors = ['rgba(52, 152, 219, 0.3)', 'rgba(46, 204, 113, 0.25)', 'rgba(26, 188, 156, 0.2)'];
+            
+            for (let i = 0; i < 20; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                const size = Math.random() * 20 + 5;
+                const duration = Math.random() * 10 + 5;
+                const delay = Math.random() * 5;
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                
+                particle.style.cssText = `
+                    width: ${size}px;
+                    height: ${size}px;
+                    left: ${Math.random() * 100}%;
+                    top: ${Math.random() * 100}%;
+                    background: ${color};
+                    animation-duration: ${duration}s;
+                    animation-delay: ${delay}s;
+                `;
+                
+                document.body.appendChild(particle);
+            }
+        }
+        
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('id-ID', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            const dateString = now.toLocaleDateString('id-ID', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+            
+            document.getElementById('currentTime').textContent = 
+                `${dateString} ${timeString}`;
+        }
+        
+        function updateCartTimer() {
+            const now = new Date();
+            const elapsed = Math.floor((now - sessionStartTime) / 60000); // dalam menit
+            const hours = Math.floor(elapsed / 60);
+            const minutes = elapsed % 60;
+            
+            document.getElementById('cartTimer').textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            
+            // Update cart status based on activity
+            if (elapsed > 30) {
+                document.getElementById('cartStatus').textContent = 'Idle';
+                document.getElementById('cartStatus').style.color = 'var(--warning)';
+            } else if (elapsed > 10) {
+                document.getElementById('cartStatus').textContent = 'Aktif';
+                document.getElementById('cartStatus').style.color = 'var(--success)';
+            }
+        }
+        
+        function scrollToMenu() {
+            document.querySelector('.menu-section').scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+        
+        function scrollToCart() {
+            document.querySelector('.cart-section').scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+        
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        function showNotification(title, message, type = 'info', duration = 5000) {
+            // Implementation in script.js
+        }
+        
+        function formatNumber(num) {
+            return new Intl.NumberFormat('id-ID').format(num);
+        }
+        
+        // Export functions to global scope for inline event handlers
+        window.scrollToMenu = scrollToMenu;
+        window.scrollToCart = scrollToCart;
+        window.scrollToTop = scrollToTop;
+        window.formatNumber = formatNumber;
+        window.showNotification = showNotification;
+    </script>
+</body>
+</html>
