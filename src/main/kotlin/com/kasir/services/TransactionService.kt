@@ -37,12 +37,15 @@ class TransactionService(private val database: DatabaseRepository) {
     fun getTodayStats(): Stats {
         val transactions = database.getTodayTransactions()
         
-        val totalIncome = transactions.sumOf { it.total.toLong() }.toInt()
+        var totalIncome = 0
+        for (txn in transactions) {
+            totalIncome += txn.total
+        }
         val totalTransactions = transactions.size
         
         val itemCounts = mutableMapOf<String, Int>()
-        transactions.forEach { txn ->
-            txn.items.forEach { item ->
+        for (txn in transactions) {
+            for (item in txn.items) {
                 itemCounts[item.name] = (itemCounts[item.name] ?: 0) + item.quantity
             }
         }

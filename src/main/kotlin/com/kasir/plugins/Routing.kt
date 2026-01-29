@@ -14,7 +14,8 @@ fun Application.configureRouting(
     authService: AuthService,
     transactionService: TransactionService,
     notificationService: NotificationService,
-    printService: BluetoothPrintService
+    printService: BluetoothPrintService,
+    financialService: FinancialService
 ) {
     routing {
         // API Routes
@@ -23,6 +24,7 @@ fun Application.configureRouting(
         transactionRoutes(transactionService)
         notificationRoutes(notificationService)
         printerRoutes(printService)
+        financialRoutes(financialService)
         
         // Static files - serve the existing HTML/CSS/JS
         static("/static") {

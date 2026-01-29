@@ -11,7 +11,7 @@ class DatabaseRepository {
     
     fun initializeDatabase() {
         transaction {
-            SchemaUtils.create(Users, Transactions, TransactionItems, MenuItems, Notifications)
+            SchemaUtils.create(Users, Transactions, TransactionItems, MenuItems, Notifications, Expenses)
             
             // Initialize with default menu if empty
             if (MenuItems.selectAll().count() == 0L) {
@@ -163,7 +163,7 @@ class DatabaseRepository {
     }
     
     // Transaction operations
-    fun saveTransaction(txn: Transaction): Boolean {
+    fun saveTransaction(txn: com.kasir.models.Transaction): Boolean {
         return transaction {
             try {
                 val txnId = Transactions.insertAndGetId {
@@ -179,7 +179,7 @@ class DatabaseRepository {
                     it[userId] = txn.userId
                 }
                 
-                txn.items.forEach { item ->
+                for (item in txn.items) {
                     TransactionItems.insert {
                         it[transactionId] = txnId
                         it[itemId] = item.id
@@ -196,7 +196,7 @@ class DatabaseRepository {
         }
     }
     
-    fun getTodayTransactions(): List<Transaction> {
+    fun getTodayTransactions(): List<com.kasir.models.Transaction> {
         val today = LocalDateTime.now().format(DateTimeFormatter.ISO_DATE)
         return transaction {
             Transactions.select { Transactions.dateIso like "$today%" }
@@ -212,7 +212,7 @@ class DatabaseRepository {
                             )
                         }
                     
-                    Transaction(
+                    com.kasir.models.Transaction(
                         transactionId = row[Transactions.transactionId],
                         date = row[Transactions.date],
                         dateIso = row[Transactions.dateIso],
@@ -229,7 +229,7 @@ class DatabaseRepository {
         }
     }
     
-    fun getRecentTransactions(limit: Int = 10): List<Transaction> {
+    fun getRecentTransactions(limit: Int = 10): List<com.kasir.models.Transaction> {
         return transaction {
             Transactions.selectAll()
                 .orderBy(Transactions.id to SortOrder.DESC)
@@ -246,7 +246,7 @@ class DatabaseRepository {
                             )
                         }
                     
-                    Transaction(
+                    com.kasir.models.Transaction(
                         transactionId = row[Transactions.transactionId],
                         date = row[Transactions.date],
                         dateIso = row[Transactions.dateIso],
@@ -293,6 +293,79 @@ class DatabaseRepository {
                         userId = row[Notifications.userId]
                     )
                 }
+        }
+    }
+    
+    // Expense operations
+    fun saveExpense(expense: Expense): Boolean {
+        return transaction {
+            try {
+                Expenses.insert {
+                    it[category] = expense.category
+                    it[amount] = expense.amount
+                    it[description] = expense.description
+                    it[date] = expense.date
+                    it[userId] = expense.userId
+                    it[createdAt] = LocalDateTime.now()
+                }
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
+    }
+    
+    fun getExpensesByDateRange(startDate: String, endDate: String): List<Expense> {
+        return transaction {
+            Expenses.select { 
+                (Expenses.date greaterEq startDate) and (Expenses.date lessEq endDate) 
+            }
+            .orderBy(Expenses.date to SortOrder.DESC)
+            .map { row ->
+                Expense(
+                    id = row[Expenses.id].value,
+                    category = row[Expenses.category],
+                    amount = row[Expenses.amount],
+                    description = row[Expenses.description],
+                    date = row[Expenses.date],
+                    userId = row[Expenses.userId]
+                )
+            }
+        }
+    }
+    
+    fun getTransactionsByDateRange(startDate: String, endDate: String): List<com.kasir.models.Transaction> {
+        return transaction {
+            Transactions.select { 
+                (Transactions.dateIso greaterEq startDate) and (Transactions.dateIso lessEq endDate)
+            }
+            .orderBy(Transactions.dateIso to SortOrder.ASC)
+            .map { row ->
+                val txnId = row[Transactions.id]
+                val items = TransactionItems.select { TransactionItems.transactionId eq txnId }
+                    .map { itemRow ->
+                        CartItem(
+                            id = itemRow[TransactionItems.itemId],
+                            name = itemRow[TransactionItems.itemName],
+                            price = itemRow[TransactionItems.price],
+                            quantity = itemRow[TransactionItems.quantity]
+                        )
+                    }
+                
+                com.kasir.models.Transaction(
+                    transactionId = row[Transactions.transactionId],
+                    date = row[Transactions.date],
+                    dateIso = row[Transactions.dateIso],
+                    items = items,
+                    subtotal = row[Transactions.subtotal],
+                    tax = row[Transactions.tax],
+                    total = row[Transactions.total],
+                    payment = row[Transactions.payment],
+                    change = row[Transactions.change],
+                    cashier = row[Transactions.cashier],
+                    userId = row[Transactions.userId]
+                )
+            }
         }
     }
     

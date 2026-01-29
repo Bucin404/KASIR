@@ -48,3 +48,12 @@ object Notifications : IntIdTable() {
     val userId = integer("user_id").nullable()
     val read = bool("read").default(false)
 }
+
+object Expenses : IntIdTable() {
+    val category = varchar("category", 100)
+    val amount = integer("amount")
+    val description = text("description")
+    val date = varchar("date", 100)
+    val userId = integer("user_id").nullable()
+    val createdAt = datetime("created_at")
+}

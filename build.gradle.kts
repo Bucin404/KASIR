@@ -49,6 +49,13 @@ dependencies {
     // Bluetooth printer support (Java library)
     implementation("com.github.anastaciocintra:escpos-coffee:4.1.0")
     
+    // Excel export support
+    implementation("org.apache.poi:poi:5.2.5")
+    implementation("org.apache.poi:poi-ooxml:5.2.5")
+    
+    // PDF generation support
+    implementation("com.itextpdf:itext7-core:7.2.5")
+    
     // Testing
     testImplementation("io.ktor:ktor-server-tests-jvm:2.3.7")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.22")
