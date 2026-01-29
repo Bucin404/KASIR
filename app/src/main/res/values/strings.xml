@@ -1,3 +1,115 @@
 <resources>
-    <string name="app_name">KASIR</string>
+    <!-- App Name -->
+    <string name="app_name">KASIR Modern</string>
+    
+    <!-- Navigation -->
+    <string name="nav_home">Beranda</string>
+    <string name="nav_menu">Menu</string>
+    <string name="nav_transactions">Transaksi</string>
+    <string name="nav_financial">Keuangan</string>
+    <string name="nav_reports">Laporan</string>
+    <string name="nav_settings">Pengaturan</string>
+    
+    <!-- Login Screen -->
+    <string name="login_title">Masuk</string>
+    <string name="login_username">Username</string>
+    <string name="login_password">Password</string>
+    <string name="login_button">Masuk</string>
+    <string name="login_register">Belum punya akun? Daftar</string>
+    <string name="login_error">Username atau password salah</string>
+    
+    <!-- Home Screen -->
+    <string name="home_welcome">Selamat Datang</string>
+    <string name="home_today_revenue">Pendapatan Hari Ini</string>
+    <string name="home_today_transactions">Transaksi Hari Ini</string>
+    <string name="home_today_profit">Keuntungan Hari Ini</string>
+    <string name="home_month_revenue">Pendapatan Bulan Ini</string>
+    
+    <!-- Menu Screen -->
+    <string name="menu_title">Daftar Menu</string>
+    <string name="menu_search">Cari menu...</string>
+    <string name="menu_category_all">Semua</string>
+    <string name="menu_add_to_cart">Tambah ke Keranjang</string>
+    <string name="menu_popular">Populer</string>
+    
+    <!-- Cart Screen -->
+    <string name="cart_title">Keranjang</string>
+    <string name="cart_empty">Keranjang kosong</string>
+    <string name="cart_subtotal">Subtotal</string>
+    <string name="cart_tax">Pajak (10%)</string>
+    <string name="cart_total">Total</string>
+    <string name="cart_checkout">Checkout</string>
+    <string name="cart_clear">Kosongkan</string>
+    
+    <!-- Checkout Screen -->
+    <string name="checkout_title">Pembayaran</string>
+    <string name="checkout_payment_method">Metode Pembayaran</string>
+    <string name="checkout_cash">Tunai</string>
+    <string name="checkout_debit">Kartu Debit</string>
+    <string name="checkout_credit">Kartu Kredit</string>
+    <string name="checkout_ewallet">E-Wallet</string>
+    <string name="checkout_process">Proses Pembayaran</string>
+    <string name="checkout_print">Cetak Struk</string>
+    <string name="checkout_success">Pembayaran berhasil!</string>
+    
+    <!-- Financial Screen -->
+    <string name="financial_title">Manajemen Keuangan</string>
+    <string name="financial_revenue">Pendapatan</string>
+    <string name="financial_expense">Pengeluaran</string>
+    <string name="financial_profit">Keuntungan Bersih</string>
+    <string name="financial_add_expense">Tambah Pengeluaran</string>
+    <string name="financial_expense_category">Kategori Pengeluaran</string>
+    <string name="financial_expense_amount">Jumlah</string>
+    <string name="financial_expense_description">Deskripsi</string>
+    
+    <!-- Expense Categories -->
+    <string name="expense_category_bahan_baku">Bahan Baku</string>
+    <string name="expense_category_gaji">Gaji Karyawan</string>
+    <string name="expense_category_listrik_air">Listrik &amp; Air</string>
+    <string name="expense_category_sewa">Sewa Tempat</string>
+    <string name="expense_category_transportasi">Transportasi</string>
+    <string name="expense_category_pemasaran">Pemasaran</string>
+    <string name="expense_category_peralatan">Peralatan</string>
+    <string name="expense_category_lainnya">Lainnya</string>
+    
+    <!-- Reports Screen -->
+    <string name="reports_title">Laporan</string>
+    <string name="reports_date_range">Rentang Tanggal</string>
+    <string name="reports_export_excel">Export Excel</string>
+    <string name="reports_export_pdf">Export PDF</string>
+    <string name="reports_top_selling">Item Terlaris</string>
+    <string name="reports_sales">Laporan Penjualan</string>
+    <string name="reports_financial">Laporan Keuangan</string>
+    
+    <!-- Admin Management -->
+    <string name="admin_title">Manajemen Admin</string>
+    <string name="admin_add_menu">Tambah Menu</string>
+    <string name="admin_edit_menu">Edit Menu</string>
+    <string name="admin_delete_menu">Hapus Menu</string>
+    <string name="admin_menu_name">Nama Menu</string>
+    <string name="admin_menu_price">Harga</string>
+    <string name="admin_menu_category">Kategori</string>
+    <string name="admin_menu_description">Deskripsi</string>
+    
+    <!-- Bluetooth Printer -->
+    <string name="printer_title">Printer Bluetooth</string>
+    <string name="printer_connect">Sambungkan</string>
+    <string name="printer_disconnect">Putuskan</string>
+    <string name="printer_scan">Cari Printer</string>
+    <string name="printer_connected">Terhubung</string>
+    <string name="printer_disconnected">Terputus</string>
+    
+    <!-- Common -->
+    <string name="save">Simpan</string>
+    <string name="cancel">Batal</string>
+    <string name="delete">Hapus</string>
+    <string name="edit">Edit</string>
+    <string name="add">Tambah</string>
+    <string name="search">Cari</string>
+    <string name="loading">Memuat...</string>
+    <string name="error">Terjadi kesalahan</string>
+    <string name="success">Berhasil</string>
+    <string name="confirm">Konfirmasi</string>
+    <string name="yes">Ya</string>
+    <string name="no">Tidak</string>
 </resources>
