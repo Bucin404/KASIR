@@ -13,6 +13,9 @@
         padding: 30px;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     }
+    .search-box {
+        margin-bottom: 15px;
+    }
     .product-item {
         display: flex;
         justify-content: space-between;
@@ -32,37 +35,62 @@
         border-color: #2ecc71;
         background: rgba(46, 204, 113, 0.1);
     }
+    .product-code {
+        font-size: 0.75rem;
+        color: #7f8c8d;
+        font-weight: 600;
+    }
+    .table-number-input {
+        font-size: 1.2rem;
+        font-weight: bold;
+        text-align: center;
+        text-transform: uppercase;
+    }
 </style>
 {% endblock %}
 {% block content %}
 <div class="order-container">
     <h3 class="text-center mb-4">
-        <i class="fas fa-shopping-cart me-2"></i>Pemesanan Online
+        <i class="fas fa-qrcode me-2"></i>Pemesanan via QR Code
     </h3>
     <form id="orderForm">
-        <div class="mb-3">
-            <label class="form-label">Nomor Meja</label>
-            <input type="text" class="form-control" name="table" placeholder="Contoh: A1" required>
+        <div class="mb-4">
+            <label class="form-label fw-bold">
+                <i class="fas fa-table me-2"></i>Nomor Meja
+            </label>
+            <input type="text" class="form-control form-control-lg table-number-input" 
+                   name="table_number" placeholder="Contoh: A1, B5, C10" required>
+            <small class="text-muted">Masukkan nomor meja Anda</small>
         </div>
+        
         <div class="mb-3">
-            <label class="form-label">Pilih Menu</label>
+            <label class="form-label fw-bold">
+                <i class="fas fa-utensils me-2"></i>Pilih Menu
+            </label>
+            <div class="search-box">
+                <input type="text" class="form-control" id="menuSearch" 
+                       placeholder="Cari menu berdasarkan kode atau nama...">
+            </div>
             <div id="menuList">
-                <div class="product-item" onclick="toggleProduct(this, 1, 'Nasi Goreng', 15000)">
+                <div class="product-item" data-id="1" data-name="nasi goreng" onclick="toggleProduct(this, 1, 'Nasi Goreng', 15000)">
                     <div>
+                        <div class="product-code">#001</div>
                         <strong>Nasi Goreng</strong><br>
                         <small class="text-muted">Rp 15.000</small>
                     </div>
                     <input type="checkbox" name="products[]" value="1">
                 </div>
-                <div class="product-item" onclick="toggleProduct(this, 2, 'Mie Goreng', 12000)">
+                <div class="product-item" data-id="2" data-name="mie goreng" onclick="toggleProduct(this, 2, 'Mie Goreng', 12000)">
                     <div>
+                        <div class="product-code">#002</div>
                         <strong>Mie Goreng</strong><br>
                         <small class="text-muted">Rp 12.000</small>
                     </div>
                     <input type="checkbox" name="products[]" value="2">
                 </div>
-                <div class="product-item" onclick="toggleProduct(this, 3, 'Es Teh', 5000)">
+                <div class="product-item" data-id="3" data-name="es teh" onclick="toggleProduct(this, 3, 'Es Teh', 5000)">
                     <div>
+                        <div class="product-code">#003</div>
                         <strong>Es Teh</strong><br>
                         <small class="text-muted">Rp 5.000</small>
                     </div>
@@ -71,15 +99,34 @@
             </div>
         </div>
         <div class="mb-3">
-            <label class="form-label">Catatan (Opsional)</label>
-            <textarea class="form-control" name="notes" rows="2" placeholder="Tambahkan catatan..."></textarea>
+            <label class="form-label fw-bold">
+                <i class="fas fa-comment me-2"></i>Catatan (Opsional)
+            </label>
+            <textarea class="form-control" name="notes" rows="2" placeholder="Contoh: Pedas sedang, tanpa bawang..."></textarea>
         </div>
-        <button type="submit" class="btn btn-primary w-100">
+        <button type="submit" class="btn btn-success w-100 btn-lg">
             <i class="fas fa-paper-plane me-2"></i>Kirim Pesanan
         </button>
     </form>
 </div>
 <script>
+    // Search functionality
+    document.getElementById('menuSearch').addEventListener('input', function(e) {
+        const searchQuery = e.target.value.toLowerCase();
+        const menuItems = document.querySelectorAll('.product-item');
+        
+        menuItems.forEach(item => {
+            const id = item.dataset.id;
+            const name = item.dataset.name;
+            
+            if (id.includes(searchQuery) || name.includes(searchQuery)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+    
     function toggleProduct(element, id, name, price) {
         element.classList.toggle('selected');
         const checkbox = element.querySelector('input[type="checkbox"]');
@@ -88,7 +135,16 @@
     
     document.getElementById('orderForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        alert('Pesanan berhasil dikirim!');
+        
+        const tableNumber = this.querySelector('[name="table_number"]').value;
+        const selectedProducts = this.querySelectorAll('input[name="products[]"]:checked');
+        
+        if (selectedProducts.length === 0) {
+            alert('Pilih minimal 1 menu!');
+            return;
+        }
+        
+        alert(`Pesanan berhasil dikirim!\nNomor Meja: ${tableNumber}\nTotal item: ${selectedProducts.length}`);
         this.reset();
         document.querySelectorAll('.product-item').forEach(item => item.classList.remove('selected'));
     });

@@ -77,6 +77,13 @@
         font-size: 1.5rem;
     }
     
+    .product-code {
+        font-size: 0.75rem;
+        color: #7f8c8d;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+    
     .product-name {
         font-weight: 600;
         color: #2c3e50;
@@ -247,6 +254,17 @@
 <div class="pos-container">
     <!-- Products Section -->
     <div class="products-section">
+        <!-- Search Box -->
+        <div class="mb-3">
+            <div class="input-group">
+                <span class="input-group-text bg-white">
+                    <i class="fas fa-search"></i>
+                </span>
+                <input type="text" class="form-control" id="searchInput" 
+                       placeholder="Cari berdasarkan kode atau nama menu...">
+            </div>
+        </div>
+        
         <div class="category-tabs">
             <button class="category-tab active" data-category="all">Semua</button>
             <button class="category-tab" data-category="makanan">Makanan</button>
@@ -359,27 +377,57 @@
     let cart = [];
     
     // Load products
-    function loadProducts(category = 'all') {
+    let currentCategory = 'all';
+    let searchQuery = '';
+    
+    function loadProducts(category = 'all', search = '') {
         const grid = document.getElementById('productsGrid');
-        const filtered = category === 'all' ? products : products.filter(p => p.category === category);
+        let filtered = category === 'all' ? products : products.filter(p => p.category === category);
+        
+        // Apply search filter
+        if (search) {
+            const searchLower = search.toLowerCase();
+            filtered = filtered.filter(p => 
+                p.name.toLowerCase().includes(searchLower) || 
+                p.id.toString().includes(search)
+            );
+        }
+        
+        if (filtered.length === 0) {
+            grid.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #999;">
+                    <i class="fas fa-search fa-3x mb-3"></i>
+                    <p>Tidak ada menu yang ditemukan</p>
+                </div>
+            `;
+            return;
+        }
         
         grid.innerHTML = filtered.map(product => `
             <div class="product-card" onclick="addToCart(${product.id})">
                 <div class="product-icon">
                     <i class="fas ${product.icon}"></i>
                 </div>
+                <div class="product-code">#${product.id}</div>
                 <div class="product-name">${product.name}</div>
                 <div class="product-price">Rp ${product.price.toLocaleString()}</div>
             </div>
         `).join('');
     }
     
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        searchQuery = e.target.value;
+        loadProducts(currentCategory, searchQuery);
+    });
+    
     // Category tabs
     document.querySelectorAll('.category-tab').forEach(tab => {
         tab.addEventListener('click', function() {
             document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
             this.classList.add('active');
-            loadProducts(this.dataset.category);
+            currentCategory = this.dataset.category;
+            loadProducts(currentCategory, searchQuery);
         });
     });
     
