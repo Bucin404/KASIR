@@ -164,6 +164,42 @@ def search_transactions():
 
 # Statistics API
 
+@api_bp.route('/stats', methods=['GET'])
+@cashier_required
+def get_stats():
+    """Get basic statistics for POS dashboard"""
+    try:
+        today = datetime.now().date()
+        
+        # Today's transactions
+        today_transactions = Transaction.query.filter(
+            func.date(Transaction.created_at) == today
+        ).count()
+        
+        # Today's revenue
+        today_revenue = db.session.query(func.sum(Transaction.total)).filter(
+            Transaction.payment_status == 'paid',
+            func.date(Transaction.created_at) == today
+        ).scalar() or 0
+        
+        # Active products
+        active_products = Product.query.filter_by(is_active=True).count()
+        
+        # Pending online orders
+        pending_orders = OnlineOrder.query.filter_by(order_status='pending').count()
+        
+        return jsonify({
+            'success': True,
+            'stats': {
+                'today_transactions': today_transactions,
+                'today_revenue': float(today_revenue),
+                'active_products': active_products,
+                'pending_orders': pending_orders
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @api_bp.route('/stats/dashboard', methods=['GET'])
 @login_required_with_role('admin', 'pemilik')
 def get_dashboard_stats():

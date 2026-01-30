@@ -47,7 +47,7 @@ def format_currency_filter(value):
 @login_manager.user_loader
 def load_user(user_id):
     """Load user for Flask-Login"""
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 # Context processor to inject common variables
 @app.context_processor
