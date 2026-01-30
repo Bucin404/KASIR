@@ -13,8 +13,30 @@ class Config:
             raise ValueError("SECRET_KEY must be set in production environment")
         SECRET_KEY = 'dev-secret-key-change-in-production'
     
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///kasir.db'
+    # Database Configuration
+    # Priority: DATABASE_URL > MySQL individual params > SQLite default
+    DATABASE_URL = os.environ.get('DATABASE_URL')
+    
+    if not DATABASE_URL:
+        # Try to build MySQL URL from individual parameters
+        mysql_host = os.environ.get('MYSQL_HOST')
+        mysql_port = os.environ.get('MYSQL_PORT', '3306')
+        mysql_user = os.environ.get('MYSQL_USER')
+        mysql_password = os.environ.get('MYSQL_PASSWORD')
+        mysql_database = os.environ.get('MYSQL_DATABASE')
+        
+        if all([mysql_host, mysql_user, mysql_password, mysql_database]):
+            DATABASE_URL = f'mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}:{mysql_port}/{mysql_database}'
+        else:
+            # Fallback to SQLite for development
+            DATABASE_URL = 'sqlite:///kasir.db'
+    
+    SQLALCHEMY_DATABASE_URI = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,  # Enable connection health checks
+        'pool_recycle': 3600,   # Recycle connections after 1 hour
+    }
     
     # Midtrans Configuration (Sandbox)
     MIDTRANS_SERVER_KEY = os.environ.get('MIDTRANS_SERVER_KEY') or 'SB-Mid-server-YOUR_SERVER_KEY'

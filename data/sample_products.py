@@ -1,222 +1,503 @@
-# Sample product data
+# Sample product data - Solaria Menu (from PDF)
 FOOD_MENU = [
-    # Makanan
+    # === NASI GORENG ===
     {
-        "id": 1, 
-        "name": "Nasi Goreng Spesial", 
-        "price": 25000, 
-        "category": "Makanan", 
-        "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=300&h=200&fit=crop&auto=format",
-        "description": "Nasi goreng dengan telur, ayam, dan sayuran segar",
-        "popular": True
-    },
-    {
-        "id": 2, 
-        "name": "Mie Ayam Bakso", 
-        "price": 20000, 
-        "category": "Makanan", 
-        "image": "https://images.unsplash.com/photo-1612874742237-6526221588e3?w=300&h=200&fit=crop&auto=format",
-        "description": "Mie ayam dengan bakso sapi pilihan",
-        "popular": True
-    },
-    {
-        "id": 3, 
-        "name": "Ayam Goreng Crispy", 
-        "price": 18000, 
-        "category": "Makanan", 
-        "image": "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=300&h=200&fit=crop&auto=format",
-        "description": "Ayam goreng crispy dengan bumbu rempah",
-        "popular": False
-    },
-    {
-        "id": 4, 
-        "name": "Sate Ayam (10 tusuk)", 
-        "price": 22000, 
-        "category": "Makanan", 
-        "image": "https://images.unsplash.com/photo-1594041680534-e8c8cdebd659?w=300&h=200&fit=crop&auto=format",
-        "description": "Sate ayam dengan bumbu kacang spesial",
-        "popular": True
-    },
-    {
-        "id": 5, 
-        "name": "Nasi Campur Komplit", 
-        "price": 22000, 
-        "category": "Makanan", 
+        "id": 111,
+        "name": "Nasi Goreng Mlarat",
+        "price": 20000,
+        "category": "Nasi Goreng",
         "image": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=300&h=200&fit=crop&auto=format",
-        "description": "Nasi dengan lauk lengkap dan sayuran",
+        "description": "Nasi goreng sederhana namun lezat",
         "popular": False
     },
     {
-        "id": 6, 
-        "name": "Rendang Daging Sapi", 
-        "price": 30000, 
-        "category": "Makanan", 
-        "image": "https://images.unsplash.com/photo-1555939614-8674f6df1389?w=300&h=200&fit=crop&auto=format",
-        "description": "Rendang daging sapi dengan bumbu rempah pilihan",
+        "id": 121,
+        "name": "Nasi Goreng Spesial",
+        "price": 22000,
+        "category": "Nasi Goreng",
+        "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=300&h=200&fit=crop&auto=format",
+        "description": "Nasi goreng dengan bumbu spesial",
         "popular": True
     },
     {
-        "id": 7, 
-        "name": "Soto Ayam Lamongan", 
-        "price": 22000, 
-        "category": "Makanan", 
-        "image": "https://images.unsplash.com/photo-1553909489-cd47e0907980?w=300&h=200&fit=crop&auto=format",
-        "description": "Soto ayam dengan bumbu koya dan sambal",
+        "id": 131,
+        "name": "Nasi Goreng Cabe Ijo",
+        "price": 22000,
+        "category": "Nasi Goreng",
+        "image": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=300&h=200&fit=crop&auto=format",
+        "description": "Nasi goreng dengan cabe hijau pedas",
         "popular": True
     },
     {
-        "id": 8, 
-        "name": "Gado-gado", 
-        "price": 18000, 
-        "category": "Makanan", 
-        "image": "https://images.unsplash.com/photo-1559054663-e8d23213f55c?w=300&h=200&fit=crop&auto=format",
-        "description": "Sayuran segar dengan bumbu kacang khas",
+        "id": 141,
+        "name": "Nasi Goreng Sosis",
+        "price": 23000,
+        "category": "Nasi Goreng",
+        "image": "https://images.unsplash.com/photo-1609501676725-7186f017a4b7?w=300&h=200&fit=crop&auto=format",
+        "description": "Nasi goreng dengan sosis",
         "popular": False
     },
-    # Minuman
     {
-        "id": 9, 
-        "name": "Es Teh Manis", 
-        "price": 5000, 
-        "category": "Minuman", 
+        "id": 151,
+        "name": "Nasi Goreng Modern Warno",
+        "price": 24000,
+        "category": "Nasi Goreng",
+        "image": "https://images.unsplash.com/photo-1596040033229-a0b3b6e75281?w=300&h=200&fit=crop&auto=format",
+        "description": "Nasi goreng modern dengan berbagai warna",
+        "popular": False
+    },
+    {
+        "id": 161,
+        "name": "Nasi Goreng Terimaskenthir",
+        "price": 25000,
+        "category": "Nasi Goreng",
+        "image": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=300&h=200&fit=crop&auto=format",
+        "description": "Nasi goreng dengan udang dan cumi",
+        "popular": True
+    },
+    {
+        "id": 171,
+        "name": "Nasi Goreng Pete",
+        "price": 25000,
+        "category": "Nasi Goreng",
+        "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=300&h=200&fit=crop&auto=format",
+        "description": "Nasi goreng dengan pete",
+        "popular": False
+    },
+    {
+        "id": 181,
+        "name": "Nasi Goreng Seafood",
+        "price": 28000,
+        "category": "Nasi Goreng",
+        "image": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=300&h=200&fit=crop&auto=format",
+        "description": "Nasi goreng dengan seafood",
+        "popular": True
+    },
+    
+    # === MIE ===
+    {
+        "id": 212,
+        "name": "Mie Goreng Ayam",
+        "price": 22000,
+        "category": "Mie",
+        "image": "https://images.unsplash.com/photo-1585032226651-759b368d7246?w=300&h=200&fit=crop&auto=format",
+        "description": "Mie goreng dengan ayam",
+        "popular": True
+    },
+    {
+        "id": 222,
+        "name": "Mie Siram Ayam",
+        "price": 22000,
+        "category": "Mie",
+        "image": "https://images.unsplash.com/photo-1612874742237-6526221588e3?w=300&h=200&fit=crop&auto=format",
+        "description": "Mie siram dengan ayam",
+        "popular": False
+    },
+    {
+        "id": 232,
+        "name": "Mie Goreng Seafood",
+        "price": 28000,
+        "category": "Mie",
+        "image": "https://images.unsplash.com/photo-1617093727343-374698b1b08d?w=300&h=200&fit=crop&auto=format",
+        "description": "Mie goreng dengan seafood",
+        "popular": True
+    },
+    {
+        "id": 242,
+        "name": "Mie Siram Seafood",
+        "price": 28000,
+        "category": "Mie",
+        "image": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=300&h=200&fit=crop&auto=format",
+        "description": "Mie siram dengan seafood",
+        "popular": False
+    },
+    {
+        "id": 252,
+        "name": "Mie Goreng Sapi",
+        "price": 30000,
+        "category": "Mie",
+        "image": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=300&h=200&fit=crop&auto=format",
+        "description": "Mie goreng dengan sapi",
+        "popular": False
+    },
+    {
+        "id": 262,
+        "name": "Mie Siram Sapi",
+        "price": 30000,
+        "category": "Mie",
+        "image": "https://images.unsplash.com/photo-1585032226651-759b368d7246?w=300&h=200&fit=crop&auto=format",
+        "description": "Mie siram dengan sapi",
+        "popular": False
+    },
+    
+    # === SNACK ===
+    {
+        "id": 313,
+        "name": "Fish Cake",
+        "price": 12000,
+        "category": "Snack",
+        "image": "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=300&h=200&fit=crop&auto=format",
+        "description": "Kue ikan goreng",
+        "popular": False
+    },
+    {
+        "id": 323,
+        "name": "Kentang Goreng",
+        "price": 15000,
+        "category": "Snack",
+        "image": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=300&h=200&fit=crop&auto=format",
+        "description": "Kentang goreng crispy",
+        "popular": True
+    },
+    {
+        "id": 333,
+        "name": "Otak Otak",
+        "price": 15000,
+        "category": "Snack",
+        "image": "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=300&h=200&fit=crop&auto=format",
+        "description": "Otak-otak ikan bakar",
+        "popular": False
+    },
+    {
+        "id": 343,
+        "name": "Sosis Goreng",
+        "price": 15000,
+        "category": "Snack",
+        "image": "https://images.unsplash.com/photo-1612844870777-7908abae7f42?w=300&h=200&fit=crop&auto=format",
+        "description": "Sosis goreng crispy",
+        "popular": True
+    },
+    {
+        "id": 353,
+        "name": "Sosis Bakar",
+        "price": 15000,
+        "category": "Snack",
+        "image": "https://images.unsplash.com/photo-1612844870777-7908abae7f42?w=300&h=200&fit=crop&auto=format",
+        "description": "Sosis bakar dengan bumbu",
+        "popular": False
+    },
+    {
+        "id": 363,
+        "name": "Mix OTP",
+        "price": 20000,
+        "category": "Snack",
+        "image": "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=300&h=200&fit=crop&auto=format",
+        "description": "Mix otak-otak, telur, dan pisang",
+        "popular": True
+    },
+    
+    # === KWETIAU ===
+    {
+        "id": 414,
+        "name": "Kwetiau Ayam Goreng",
+        "price": 25000,
+        "category": "Kwetiau",
+        "image": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=300&h=200&fit=crop&auto=format",
+        "description": "Kwetiau goreng dengan ayam",
+        "popular": True
+    },
+    {
+        "id": 424,
+        "name": "Kwetiau Ayam Siram",
+        "price": 25000,
+        "category": "Kwetiau",
+        "image": "https://images.unsplash.com/photo-1585032226651-759b368d7246?w=300&h=200&fit=crop&auto=format",
+        "description": "Kwetiau siram dengan ayam",
+        "popular": False
+    },
+    {
+        "id": 434,
+        "name": "Kwetiau Seafood Goreng",
+        "price": 28000,
+        "category": "Kwetiau",
+        "image": "https://images.unsplash.com/photo-1617093727343-374698b1b08d?w=300&h=200&fit=crop&auto=format",
+        "description": "Kwetiau goreng dengan seafood",
+        "popular": True
+    },
+    {
+        "id": 444,
+        "name": "Kwetiau Seafood Siram",
+        "price": 28000,
+        "category": "Kwetiau",
+        "image": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=300&h=200&fit=crop&auto=format",
+        "description": "Kwetiau siram dengan seafood",
+        "popular": False
+    },
+    {
+        "id": 454,
+        "name": "Kwetiau Sapi Goreng",
+        "price": 30000,
+        "category": "Kwetiau",
+        "image": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=300&h=200&fit=crop&auto=format",
+        "description": "Kwetiau goreng dengan sapi",
+        "popular": False
+    },
+    {
+        "id": 464,
+        "name": "Kwetiau Sapi Siram",
+        "price": 30000,
+        "category": "Kwetiau",
+        "image": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=300&h=200&fit=crop&auto=format",
+        "description": "Kwetiau siram dengan sapi",
+        "popular": False
+    },
+    
+    # === MENU LAIN ===
+    {
+        "id": 515,
+        "name": "Cap Cay Goreng Ayam",
+        "price": 23000,
+        "category": "Menu Lain",
+        "image": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=300&h=200&fit=crop&auto=format",
+        "description": "Cap cay goreng dengan ayam",
+        "popular": False
+    },
+    {
+        "id": 525,
+        "name": "Cap Cay Goreng Seafood",
+        "price": 28000,
+        "category": "Menu Lain",
+        "image": "https://images.unsplash.com/photo-1617093727343-374698b1b08d?w=300&h=200&fit=crop&auto=format",
+        "description": "Cap cay goreng dengan seafood",
+        "popular": True
+    },
+    {
+        "id": 535,
+        "name": "Sapo Tahu Ayam",
+        "price": 27000,
+        "category": "Menu Lain",
+        "image": "https://images.unsplash.com/photo-1546069901-eacef0df6022?w=300&h=200&fit=crop&auto=format",
+        "description": "Sapo tahu dengan ayam",
+        "popular": True
+    },
+    {
+        "id": 545,
+        "name": "Sapo Tahu Seafood",
+        "price": 30000,
+        "category": "Menu Lain",
+        "image": "https://images.unsplash.com/photo-1546069901-eacef0df6022?w=300&h=200&fit=crop&auto=format",
+        "description": "Sapo tahu dengan seafood",
+        "popular": True
+    },
+    {
+        "id": 555,
+        "name": "Nasi Putih",
+        "price": 5000,
+        "category": "Menu Lain",
+        "image": "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=300&h=200&fit=crop&auto=format",
+        "description": "Nasi putih hangat",
+        "popular": False
+    },
+    {
+        "id": 565,
+        "name": "Telur Mata Sapi / Dadar",
+        "price": 5000,
+        "category": "Menu Lain",
+        "image": "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=300&h=200&fit=crop&auto=format",
+        "description": "Telur mata sapi atau dadar",
+        "popular": False
+    },
+    
+    # === PAKET ===
+    {
+        "id": 616,
+        "name": "Nasi Goreng Cabe Ijo + Teh",
+        "price": 25000,
+        "category": "Paket",
+        "image": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=300&h=200&fit=crop&auto=format",
+        "description": "Paket nasi goreng cabe ijo dengan teh",
+        "popular": True
+    },
+    {
+        "id": 626,
+        "name": "Kwetiau Ayam Goreng + Teh",
+        "price": 28000,
+        "category": "Paket",
+        "image": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=300&h=200&fit=crop&auto=format",
+        "description": "Paket kwetiau ayam goreng dengan teh",
+        "popular": True
+    },
+    {
+        "id": 636,
+        "name": "Nasi Goreng Spesial + Lemon Tea",
+        "price": 33000,
+        "category": "Paket",
+        "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=300&h=200&fit=crop&auto=format",
+        "description": "Paket nasi goreng spesial dengan lemon tea",
+        "popular": True
+    },
+    {
+        "id": 646,
+        "name": "Kwetiau Ayam Goreng + Thai Tea",
+        "price": 35000,
+        "category": "Paket",
+        "image": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=300&h=200&fit=crop&auto=format",
+        "description": "Paket kwetiau ayam goreng dengan thai tea",
+        "popular": True
+    },
+    {
+        "id": 656,
+        "name": "2 Thai Tea + Kentang Goreng",
+        "price": 38000,
+        "category": "Paket",
+        "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=300&h=200&fit=crop&auto=format",
+        "description": "Paket 2 thai tea dengan kentang goreng",
+        "popular": True
+    },
+    {
+        "id": 666,
+        "name": "2 Cappucino + Mix OTP",
+        "price": 45000,
+        "category": "Paket",
+        "image": "https://images.unsplash.com/photo-1534778101976-62847782c213?w=300&h=200&fit=crop&auto=format",
+        "description": "Paket 2 cappucino dengan mix OTP",
+        "popular": False
+    },
+    {
+        "id": 676,
+        "name": "Nasi + Capcay Goreng Seafood + Blackcurant",
+        "price": 45000,
+        "category": "Paket",
+        "image": "https://images.unsplash.com/photo-1617093727343-374698b1b08d?w=300&h=200&fit=crop&auto=format",
+        "description": "Paket nasi, capcay goreng seafood dengan blackcurant",
+        "popular": False
+    },
+    {
+        "id": 686,
+        "name": "Nasi + Sapo Tahu Seafood + Lemonade",
+        "price": 45000,
+        "category": "Paket",
+        "image": "https://images.unsplash.com/photo-1546069901-eacef0df6022?w=300&h=200&fit=crop&auto=format",
+        "description": "Paket nasi, sapo tahu seafood dengan lemonade",
+        "popular": False
+    },
+    
+    # === MINUMAN ===
+    {
+        "id": 717,
+        "name": "Teh Mlarat",
+        "price": 3000,
+        "category": "Minuman",
         "image": "https://images.unsplash.com/photo-1597481499753-6e63aca6d3f3?w=300&h=200&fit=crop&auto=format",
-        "description": "Es teh manis dengan gula aren",
+        "description": "Teh sederhana",
+        "popular": False
+    },
+    {
+        "id": 727,
+        "name": "Teh Manis",
+        "price": 5000,
+        "category": "Minuman",
+        "image": "https://images.unsplash.com/photo-1597481499753-6e63aca6d3f3?w=300&h=200&fit=crop&auto=format",
+        "description": "Teh manis segar",
         "popular": True
     },
     {
-        "id": 10, 
-        "name": "Jus Alpukat", 
-        "price": 15000, 
-        "category": "Minuman", 
-        "image": "https://images.unsplash.com/photo-1623063878630-7c10b5f6d0c9?w=300&h=200&fit=crop&auto=format",
-        "description": "Jus alpukat segar dengan susu kental",
-        "popular": True
-    },
-    {
-        "id": 11, 
-        "name": "Kopi Latte", 
-        "price": 18000, 
-        "category": "Minuman", 
-        "image": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=300&h=200&fit=crop&auto=format",
-        "description": "Kopi latte dengan susu segar",
-        "popular": True
-    },
-    {
-        "id": 12, 
-        "name": "Air Mineral", 
-        "price": 4000, 
-        "category": "Minuman", 
+        "id": 737,
+        "name": "Air Mineral",
+        "price": 5000,
+        "category": "Minuman",
         "image": "https://images.unsplash.com/photo-1523362628745-0c100150b504?w=300&h=200&fit=crop&auto=format",
-        "description": "Air mineral botolan 600ml",
+        "description": "Air mineral",
         "popular": False
     },
     {
-        "id": 13, 
-        "name": "Es Jeruk Segar", 
-        "price": 8000, 
-        "category": "Minuman", 
-        "image": "https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=300&h=200&fit=crop&auto=format",
-        "description": "Es jeruk peras tanpa biji",
-        "popular": True
-    },
-    {
-        "id": 14, 
-        "name": "Milkshake Coklat", 
-        "price": 20000, 
-        "category": "Minuman", 
-        "image": "https://images.unsplash.com/photo-1579954115545-a95591f28bfc?w=300&h=200&fit=crop&auto=format",
-        "description": "Milkshake coklat dengan topping whipped cream",
-        "popular": True
-    },
-    {
-        "id": 15, 
-        "name": "Matcha Latte", 
-        "price": 22000, 
-        "category": "Minuman", 
-        "image": "https://images.unsplash.com/photo-1561047029-3000c68339ca?w=300&h=200&fit=crop&auto=format",
-        "description": "Matcha latte dengan susu oat",
+        "id": 747,
+        "name": "Kopi Hitam",
+        "price": 6000,
+        "category": "Minuman",
+        "image": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=300&h=200&fit=crop&auto=format",
+        "description": "Kopi hitam",
         "popular": False
     },
     {
-        "id": 16, 
-        "name": "Boba Milk Tea", 
-        "price": 18000, 
-        "category": "Minuman", 
-        "image": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=300&h=200&fit=crop&auto=format",
-        "description": "Milk tea dengan bubble boba",
-        "popular": True
-    },
-    # Dessert
-    {
-        "id": 17, 
-        "name": "Brownies Coklat", 
-        "price": 12000, 
-        "category": "Dessert", 
-        "image": "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=300&h=200&fit=crop&auto=format",
-        "description": "Brownies coklat premium dengan kacang",
-        "popular": True
-    },
-    {
-        "id": 18, 
-        "name": "Pisang Goreng", 
-        "price": 8000, 
-        "category": "Dessert", 
-        "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&h=200&fit=crop&auto=format",
-        "description": "Pisang goreng dengan keju parut",
+        "id": 757,
+        "name": "Green Tea",
+        "price": 13000,
+        "category": "Minuman",
+        "image": "https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=300&h=200&fit=crop&auto=format",
+        "description": "Green tea segar",
         "popular": False
     },
     {
-        "id": 19, 
-        "name": "Donat Gula", 
-        "price": 7000, 
-        "category": "Dessert", 
-        "image": "https://images.unsplash.com/photo-1551106652-a5bcf4b29ab6?w=300&h=200&fit=crop&auto=format",
-        "description": "Donat lembut dengan taburan gula",
+        "id": 767,
+        "name": "Thai Tea",
+        "price": 15000,
+        "category": "Minuman",
+        "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=300&h=200&fit=crop&auto=format",
+        "description": "Thai tea original",
         "popular": True
     },
     {
-        "id": 20, 
-        "name": "Puding Coklat", 
-        "price": 10000, 
-        "category": "Dessert", 
-        "image": "https://images.unsplash.com/photo-1623334044303-241021148842?w=300&h=200&fit=crop&auto=format",
-        "description": "Puding coklat dengan saus karamel",
+        "id": 777,
+        "name": "Green Tea Milk",
+        "price": 15000,
+        "category": "Minuman",
+        "image": "https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=300&h=200&fit=crop&auto=format",
+        "description": "Green tea dengan susu",
         "popular": False
     },
     {
-        "id": 21, 
-        "name": "Es Krim Vanilla", 
-        "price": 15000, 
-        "category": "Dessert", 
-        "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=300&h=200&fit=crop&auto=format",
-        "description": "Es krim vanilla dengan topping coklat",
+        "id": 787,
+        "name": "Milo",
+        "price": 15000,
+        "category": "Minuman",
+        "image": "https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=300&h=200&fit=crop&auto=format",
+        "description": "Milo hangat atau dingin",
         "popular": True
     },
     {
-        "id": 22, 
-        "name": "Cheesecake Berry", 
-        "price": 25000, 
-        "category": "Dessert", 
-        "image": "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=300&h=200&fit=crop&auto=format",
-        "description": "Cheesecake dengan saus berry segar",
+        "id": 797,
+        "name": "Thai Tea Milo",
+        "price": 15000,
+        "category": "Minuman",
+        "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=300&h=200&fit=crop&auto=format",
+        "description": "Thai tea campur milo",
+        "popular": False
+    },
+    {
+        "id": 708,
+        "name": "Cappucino",
+        "price": 15000,
+        "category": "Minuman",
+        "image": "https://images.unsplash.com/photo-1534778101976-62847782c213?w=300&h=200&fit=crop&auto=format",
+        "description": "Cappucino dengan foam susu",
         "popular": True
     },
     {
-        "id": 23, 
-        "name": "Tiramisu", 
-        "price": 22000, 
-        "category": "Dessert", 
-        "image": "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=300&h=200&fit=crop&auto=format",
-        "description": "Tiramisu klasik Italia",
+        "id": 718,
+        "name": "Teh Tarik",
+        "price": 15000,
+        "category": "Minuman",
+        "image": "https://images.unsplash.com/photo-1556881286-fc6915169721?w=300&h=200&fit=crop&auto=format",
+        "description": "Teh tarik dengan susu",
         "popular": True
     },
     {
-        "id": 24, 
-        "name": "Waffle Madu", 
-        "price": 18000, 
-        "category": "Dessert", 
-        "image": "https://images.unsplash.com/photo-1562376552-0d160a2f238d?w=300&h=200&fit=crop&auto=format",
-        "description": "Waffle renyah dengan madu dan buah",
+        "id": 728,
+        "name": "Lemon Tea",
+        "price": 15000,
+        "category": "Minuman",
+        "image": "https://images.unsplash.com/photo-1556881286-fc6915169721?w=300&h=200&fit=crop&auto=format",
+        "description": "Teh dengan lemon segar",
+        "popular": True
+    },
+    {
+        "id": 738,
+        "name": "Lemonade",
+        "price": 15000,
+        "category": "Minuman",
+        "image": "https://images.unsplash.com/photo-1523677011781-c91d1bbe2f4d?w=300&h=200&fit=crop&auto=format",
+        "description": "Lemonade segar",
+        "popular": True
+    },
+    {
+        "id": 748,
+        "name": "Blackcurant",
+        "price": 15000,
+        "category": "Minuman",
+        "image": "https://images.unsplash.com/photo-1546548970-71785318a17b?w=300&h=200&fit=crop&auto=format",
+        "description": "Blackcurant segar",
         "popular": False
     },
 ]
+
