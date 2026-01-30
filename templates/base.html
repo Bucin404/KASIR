@@ -431,7 +431,7 @@
         </div>
         
         <nav class="sidebar-menu">
-            {% if session.user %}
+            {% if current_user.is_authenticated %}
                 <!-- Admin Section -->
                 {% if session.role == 'admin' %}
                 <div class="menu-section">
@@ -448,7 +448,7 @@
                 {% endif %}
                 
                 <!-- Cashier Section -->
-                {% if session.role in ['admin', 'cashier'] %}
+                {% if current_user.role in ['admin', 'kasir'] %}
                 <div class="menu-section">
                     <div class="menu-section-title">Kasir</div>
                     <a href="{{ url_for('cashier.index') }}" class="menu-item {% if request.endpoint == 'cashier.index' %}active{% endif %}">
@@ -463,7 +463,7 @@
                 {% endif %}
                 
                 <!-- Finance Section -->
-                {% if session.role in ['admin', 'finance'] %}
+                {% if current_user.role in ['admin', 'pemilik'] %}
                 <div class="menu-section">
                     <div class="menu-section-title">Keuangan</div>
                     <a href="{{ url_for('finance.dashboard') }}" class="menu-item {% if request.endpoint == 'finance.dashboard' %}active{% endif %}">
@@ -503,13 +503,13 @@
             </div>
             
             <div class="navbar-right">
-                {% if session.user %}
+                {% if current_user.is_authenticated %}
                 <div class="user-info">
                     <div class="user-avatar">
-                        {{ session.user[0]|upper }}
+                        {{ current_user.username[0]|upper }}
                     </div>
                     <div class="user-details">
-                        <span class="user-name">{{ session.user }}</span>
+                        <span class="user-name">{{ current_user.username }}</span>
                         <span class="user-role">{{ session.role }}</span>
                     </div>
                 </div>
