@@ -354,7 +354,7 @@
                         <i class="fas fa-cash-register"></i>
                         <span>POS Kasir</span>
                     </a>
-                    <a href="{{ url_for('order.online') }}" class="menu-item {% if request.endpoint and 'orders' in request.endpoint %}active{% endif %}">
+                    <a href="{{ url_for('order.manage_orders') }}" class="menu-item {% if request.endpoint and 'orders' in request.endpoint %}active{% endif %}">
                         <i class="fas fa-shopping-cart"></i>
                         <span>Pesanan Online</span>
                     </a>
