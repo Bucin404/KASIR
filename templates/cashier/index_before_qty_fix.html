@@ -582,109 +582,6 @@
         transform: scale(1.05);
     }
     
-    /* Product Quantity Controls - NEW */
-    .product-qty-controls {
-        margin-top: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        position: relative;
-        z-index: 1;
-    }
-    
-    .product-qty-btn {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.15);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        color: #fff;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-    }
-    
-    .product-qty-btn:hover {
-        background: rgba(102, 126, 234, 0.4);
-        border-color: #667eea;
-        transform: scale(1.1);
-    }
-    
-    .product-qty-input {
-        width: 50px;
-        height: 32px;
-        text-align: center;
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 8px;
-        color: #fff;
-        font-weight: 600;
-        font-size: 1rem;
-    }
-    
-    .product-qty-input:focus {
-        outline: none;
-        border-color: #667eea;
-        background: rgba(102, 126, 234, 0.2);
-    }
-    
-    .product-add-btn {
-        margin-top: 12px;
-        width: 100%;
-        padding: 10px 16px;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        border: none;
-        border-radius: 12px;
-        color: #fff;
-        font-weight: 600;
-        font-size: 0.9rem;
-        cursor: pointer;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        transition: all 0.3s ease;
-        position: relative;
-        z-index: 1;
-    }
-    
-    .product-add-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-    }
-    
-    .product-add-btn:active {
-        transform: translateY(0);
-    }
-    
-    .product-card-wrapper {
-        cursor: default;
-    }
-    
-    /* Notification animations */
-    @keyframes slideInRight {
-        from {
-            opacity: 0;
-            transform: translateX(100px);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(0);
-        }
-    }
-    
-    @keyframes slideOutRight {
-        from {
-            opacity: 1;
-            transform: translateX(0);
-        }
-        to {
-            opacity: 0;
-            transform: translateX(100px);
-        }
-    }
-    
     /* Responsive */
     @media (max-width: 992px) {
         .pos-container {
@@ -808,19 +705,12 @@
     const products = {{ products|tojson|safe }};
     
     let cart = [];
-    let productQuantities = {}; // Track quantity for each product
     let currentCategory = 'all';
     let searchQuery = '';
-    
-    // Initialize product quantities to 1
-    products.forEach(product => {
-        productQuantities[product.id] = 1;
-    });
     
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
         loadProducts();
-        loadCart(); // Load saved cart
         setupEventListeners();
     });
     
@@ -871,7 +761,7 @@
         }
         
         grid.innerHTML = filtered.map(product => `
-            <div class="product-card">
+            <div class="product-card" onclick="addToCart(${product.id})">
                 <div class="product-image">
                     <i class="fas fa-utensils"></i>
                 </div>
@@ -884,24 +774,6 @@
                         <span>${getSpicyLabel(product.spicy_level)}</span>
                     </div>
                 ` : ''}
-                <div class="product-qty-controls">
-                    <button class="product-qty-btn" onclick="adjustProductQty(${product.id}, -1)">
-                        <i class="fas fa-minus"></i>
-                    </button>
-                    <input type="number" 
-                           class="product-qty-input" 
-                           id="qty-${product.id}" 
-                           value="${productQuantities[product.id]}" 
-                           min="1" 
-                           max="99"
-                           onchange="updateProductQty(${product.id}, this.value)">
-                    <button class="product-qty-btn" onclick="adjustProductQty(${product.id}, 1)">
-                        <i class="fas fa-plus"></i>
-                    </button>
-                </div>
-                <button class="product-add-btn" onclick="addToCartWithQty(${product.id})">
-                    <i class="fas fa-cart-plus me-2"></i>Tambah ke Keranjang
-                </button>
             </div>
         `).join('');
     }
@@ -920,78 +792,7 @@
         return 'Normal';
     }
     
-    // Adjust product quantity (+ or -)
-    function adjustProductQty(productId, change) {
-        productQuantities[productId] = Math.max(1, Math.min(99, productQuantities[productId] + change));
-        const input = document.getElementById(`qty-${productId}`);
-        if (input) {
-            input.value = productQuantities[productId];
-        }
-    }
-    
-    // Update product quantity from input
-    function updateProductQty(productId, value) {
-        const qty = parseInt(value) || 1;
-        productQuantities[productId] = Math.max(1, Math.min(99, qty));
-        const input = document.getElementById(`qty-${productId}`);
-        if (input) {
-            input.value = productQuantities[productId];
-        }
-    }
-    
-    // Add to cart with selected quantity
-    function addToCartWithQty(productId) {
-        const product = products.find(p => p.id === productId);
-        const qty = productQuantities[productId];
-        const existingItem = cart.find(item => item.id === productId);
-        
-        if (existingItem) {
-            existingItem.qty += qty;
-        } else {
-            cart.push({ ...product, qty: qty });
-        }
-        
-        // Reset quantity to 1 after adding
-        productQuantities[productId] = 1;
-        const input = document.getElementById(`qty-${productId}`);
-        if (input) {
-            input.value = 1;
-        }
-        
-        updateCart();
-        
-        // Show success notification
-        showNotification(`${product.name} ditambahkan (${qty}x)`);
-    }
-    
-    // Show notification
-    function showNotification(message) {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 15px 25px;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-            z-index: 10000;
-            font-weight: 600;
-            animation: slideInRight 0.4s ease;
-        `;
-        notification.innerHTML = `<i class="fas fa-check-circle me-2"></i>${message}`;
-        document.body.appendChild(notification);
-        
-        // Remove after 3 seconds
-        setTimeout(() => {
-            notification.style.animation = 'slideOutRight 0.4s ease';
-            setTimeout(() => notification.remove(), 400);
-        }, 3000);
-    }
-    
-    // Add to cart (legacy - keep for compatibility)
+    // Add to cart
     function addToCart(productId) {
         const product = products.find(p => p.id === productId);
         const existingItem = cart.find(item => item.id === productId);
@@ -1047,23 +848,6 @@
         
         updateSummary();
         calculateChange();
-        
-        // Save cart to localStorage
-        localStorage.setItem('kasir_cart', JSON.stringify(cart));
-    }
-    
-    // Load cart from localStorage
-    function loadCart() {
-        const savedCart = localStorage.getItem('kasir_cart');
-        if (savedCart) {
-            try {
-                cart = JSON.parse(savedCart);
-                updateCart();
-            } catch (e) {
-                console.error('Error loading cart:', e);
-                cart = [];
-            }
-        }
     }
     
     // Increase quantity
@@ -1134,7 +918,6 @@
         if (confirm('Kosongkan keranjang?')) {
             cart = [];
             document.getElementById('paidAmount').value = '';
-            localStorage.removeItem('kasir_cart'); // Clear saved cart
             updateCart();
         }
     }
@@ -1161,7 +944,6 @@
         // Clear cart
         cart = [];
         document.getElementById('paidAmount').value = '';
-        localStorage.removeItem('kasir_cart'); // Clear saved cart
         updateCart();
     }
 </script>
