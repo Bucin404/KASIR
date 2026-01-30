@@ -55,11 +55,15 @@ def dashboard():
     # Recent transactions
     recent_transactions = Transaction.query.order_by(desc(Transaction.created_at)).limit(10).all()
     
-    # Top products
+    # Top products - import TransactionItem for proper join
+    from models import TransactionItem
+    
     top_products = db.session.query(
         Product.name,
-        func.sum(Transaction.total).label('total_sales')
-    ).join(Transaction.items).join(Transaction).filter(
+        func.sum(TransactionItem.subtotal).label('total_sales')
+    ).join(TransactionItem, Product.id == TransactionItem.product_id
+    ).join(Transaction, TransactionItem.transaction_id == Transaction.id
+    ).filter(
         Transaction.payment_status == 'paid',
         func.date(Transaction.created_at) >= month_ago
     ).group_by(Product.name).order_by(desc('total_sales')).limit(5).all()

@@ -5,7 +5,14 @@ load_dotenv()
 
 class Config:
     """Base configuration"""
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-please-change-in-production'
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        # Only use default in development
+        import sys
+        if 'pytest' not in sys.modules and os.environ.get('FLASK_ENV') == 'production':
+            raise ValueError("SECRET_KEY must be set in production environment")
+        SECRET_KEY = 'dev-secret-key-change-in-production'
+    
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///kasir.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
@@ -18,6 +25,9 @@ class Config:
     APP_NAME = 'KASIR Modern'
     APP_VERSION = '2.0.0'
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
+    
+    # Tax Configuration
+    TAX_RATE = float(os.environ.get('TAX_RATE', '0.10'))  # Default 10% tax
     
     # Session Configuration
     PERMANENT_SESSION_LIFETIME = 86400  # 24 hours

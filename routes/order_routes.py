@@ -13,16 +13,36 @@ import base64
 order_bp = Blueprint('order', __name__, url_prefix='/order')
 
 def generate_order_id():
-    """Generate unique order ID"""
-    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-    return f"ORD{timestamp}{random_str}"
+    """Generate unique order ID with collision check"""
+    max_attempts = 10
+    for _ in range(max_attempts):
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        order_id = f"ORD{timestamp}{random_str}"
+        
+        # Check if ID already exists
+        if not OnlineOrder.query.filter_by(order_id=order_id).first():
+            return order_id
+    
+    # Fallback to UUID if collision persists
+    import uuid
+    return f"ORD{uuid.uuid4().hex[:16].upper()}"
 
 def generate_transaction_id():
-    """Generate unique transaction ID"""
-    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-    random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
-    return f"TRX{timestamp}{random_str}"
+    """Generate unique transaction ID with collision check"""
+    max_attempts = 10
+    for _ in range(max_attempts):
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        random_str = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        transaction_id = f"TRX{timestamp}{random_str}"
+        
+        # Check if ID already exists
+        if not Transaction.query.filter_by(transaction_id=transaction_id).first():
+            return transaction_id
+    
+    # Fallback to UUID if collision persists
+    import uuid
+    return f"TRX{uuid.uuid4().hex[:16].upper()}"
 
 @order_bp.route('/menu')
 def menu():
@@ -89,8 +109,9 @@ def place_order():
                 'notes': item.get('notes', '')
             })
         
-        # Tax and total (10% tax)
-        tax = subtotal * 0.10
+        # Tax and total (configurable tax rate from config)
+        tax_rate = current_app.config.get('TAX_RATE', 0.10)
+        tax = subtotal * tax_rate
         total = subtotal + tax
         
         # Create transaction first
@@ -143,7 +164,7 @@ def place_order():
         
         # Generate payment URL for Midtrans if needed
         if payment_method == 'online':
-            payment_url = generate_midtrans_payment(online_order, transaction)
+            payment_url = generate_midtrans_payment_mock(online_order, transaction)
             online_order.payment_url = payment_url
         
         db.session.add(online_order)
@@ -168,50 +189,30 @@ def place_order():
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Terjadi kesalahan: {str(e)}'}), 500
 
-def generate_midtrans_payment(order, transaction):
-    """Generate Midtrans payment URL (Snap API)"""
+def generate_midtrans_payment_mock(order, transaction):
+    """Generate mock Midtrans payment URL
+    
+    NOTE: This is a placeholder implementation for development.
+    In production, implement actual Midtrans Snap API integration:
+    1. Make POST request to Midtrans Snap API with transaction details
+    2. Include authentication headers with server key
+    3. Handle API response and errors properly
+    4. Return the redirect_url from Midtrans response
+    """
     try:
-        # This is a simplified version - you'll need to integrate with actual Midtrans API
-        # For now, return a placeholder URL
-        
+        # Placeholder implementation - returns mock URL
+        # TODO: Implement actual Midtrans API integration
         server_key = current_app.config.get('MIDTRANS_SERVER_KEY')
         is_production = current_app.config.get('MIDTRANS_IS_PRODUCTION', False)
         
-        # Midtrans Snap API endpoint
-        if is_production:
-            snap_url = 'https://app.midtrans.com/snap/v1/transactions'
-        else:
-            snap_url = 'https://app.sandbox.midtrans.com/snap/v1/transactions'
-        
-        # Prepare transaction details
-        transaction_details = {
-            'order_id': order.order_id,
-            'gross_amount': int(order.total_amount)
-        }
-        
-        item_details = []
-        for item in transaction.items:
-            item_details.append({
-                'id': str(item.product_id),
-                'price': int(item.price),
-                'quantity': item.quantity,
-                'name': item.product_name
-            })
-        
-        customer_details = {
-            'first_name': order.customer_name,
-            'email': order.customer_email or f"{order.order_id}@customer.com",
-            'phone': order.customer_phone
-        }
-        
         # For demo purposes, return a mock payment URL
-        # In production, you would make an actual API call to Midtrans
         payment_url = f"/order/payment/{order.order_id}"
         
         return payment_url
         
     except Exception as e:
-        print(f"Error generating Midtrans payment: {e}")
+        # Use logging instead of print in production
+        current_app.logger.error(f"Error generating Midtrans payment: {e}")
         return None
 
 @order_bp.route('/payment/<order_id>')
@@ -227,6 +228,13 @@ def payment_page(order_id):
 @order_bp.route('/payment-callback', methods=['POST'])
 def payment_callback():
     """Handle payment callback from Midtrans"""
+    # TODO: Add Midtrans signature verification for production
+    # import hashlib
+    # server_key = current_app.config.get('MIDTRANS_SERVER_KEY')
+    # signature = hashlib.sha512((order_id + status_code + gross_amount + server_key).encode()).hexdigest()
+    # if signature != request.json.get('signature_key'):
+    #     return jsonify({'success': False, 'message': 'Invalid signature'}), 403
+    
     try:
         data = request.get_json()
         
@@ -345,7 +353,7 @@ def generate_qr():
 def api_orders():
     """API endpoint to get orders"""
     status = request.args.get('status', '')
-    limit = request.args.get('limit', 10, type=int)
+    limit = min(request.args.get('limit', 10, type=int), 100)  # Cap at 100
     
     query = OnlineOrder.query
     

@@ -274,12 +274,16 @@ def get_top_products():
         
         start_date = datetime.now().date() - timedelta(days=period_days)
         
-        # Get top products by quantity sold
+        # Get top products by quantity sold - import TransactionItem model
+        from models import TransactionItem
+        
         top_products = db.session.query(
             Product.name,
-            func.sum(db.cast(db.cast(Transaction.items.property.mapper.class_.quantity, db.Integer), db.Integer)).label('quantity'),
-            func.sum(db.cast(db.cast(Transaction.items.property.mapper.class_.subtotal, db.Float), db.Float)).label('revenue')
-        ).select_from(Transaction).join(Transaction.items).join(Product).filter(
+            func.sum(TransactionItem.quantity).label('quantity'),
+            func.sum(TransactionItem.subtotal).label('revenue')
+        ).join(TransactionItem, Product.id == TransactionItem.product_id
+        ).join(Transaction, TransactionItem.transaction_id == Transaction.id
+        ).filter(
             Transaction.payment_status == 'paid',
             func.date(Transaction.created_at) >= start_date
         ).group_by(Product.name).order_by(desc('revenue')).limit(limit).all()
@@ -351,13 +355,23 @@ def get_orders():
 
 @api_bp.route('/orders/<order_id>', methods=['GET'])
 def get_order(order_id):
-    """Get single order details"""
+    """Get single order details (public endpoint with limited info)"""
     try:
         order = OnlineOrder.query.filter_by(order_id=order_id).first_or_404()
         
+        # Return limited information for public access
+        # For full details, user should authenticate or provide phone verification
+        order_data = {
+            'order_id': order.order_id,
+            'order_status': order.order_status,
+            'payment_status': order.payment_status,
+            'total_amount': order.total_amount,
+            'created_at': order.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        }
+        
         return jsonify({
             'success': True,
-            'order': order.to_dict()
+            'order': order_data
         })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
