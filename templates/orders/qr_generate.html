@@ -28,7 +28,7 @@
     <div class="qr-card">
         <h3 class="mb-4">QR Code untuk Pesanan Online</h3>
         <div class="qr-code">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={{ url_for('orders.customer_order', _external=True) }}" 
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={{ url_for('order.customer_order', _external=True) }}" 
                  alt="QR Code" style="width: 100%;">
         </div>
         <p class="text-muted">Scan QR code ini untuk melakukan pemesanan</p>
@@ -36,7 +36,7 @@
             <button class="btn btn-primary" onclick="window.print()">
                 <i class="fas fa-print me-2"></i>Cetak QR Code
             </button>
-            <a href="{{ url_for('orders.online') }}" class="btn btn-secondary">
+            <a href="{{ url_for('order.online') }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-2"></i>Kembali
             </a>
         </div>

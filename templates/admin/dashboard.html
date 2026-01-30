@@ -189,7 +189,7 @@
             <div class="stat-icon orange">
                 <i class="fas fa-dollar-sign"></i>
             </div>
-            <div class="stat-value">Rp {{ revenue_today|default(0)|number_format }}</div>
+            <div class="stat-value">Rp {{ revenue_today|default(0)|format_number }}</div>
             <div class="stat-label">Pendapatan Hari Ini</div>
             <div class="stat-change positive">
                 <i class="fas fa-arrow-up"></i> 15% dari kemarin
@@ -296,7 +296,7 @@
                         </a>
                     </div>
                     <div class="col-md-3">
-                        <a href="{{ url_for('orders.online') }}" class="btn btn-lg w-100" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: #fff;">
+                        <a href="{{ url_for('order.online') }}" class="btn btn-lg w-100" style="background: linear-gradient(135deg, #9b59b6, #8e44ad); color: #fff;">
                             <i class="fas fa-shopping-cart mb-2" style="font-size: 2rem; display: block;"></i>
                             Pesanan Online
                         </a>
