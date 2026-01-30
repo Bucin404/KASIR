@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Generate QR Code - KASIR{% endblock %}
+{% block page_title %}Generate QR Code{% endblock %}
+{% block extra_css %}
+<style>
+    .qr-card {
+        max-width: 600px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 15px;
+        padding: 40px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+    .qr-code {
+        width: 300px;
+        height: 300px;
+        margin: 30px auto;
+        background: #fff;
+        border: 3px solid #3498db;
+        border-radius: 10px;
+        padding: 20px;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="qr-card">
+        <h3 class="mb-4">QR Code untuk Pesanan Online</h3>
+        <div class="qr-code">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={{ url_for('orders.customer_order', _external=True) }}" 
+                 alt="QR Code" style="width: 100%;">
+        </div>
+        <p class="text-muted">Scan QR code ini untuk melakukan pemesanan</p>
+        <div class="d-flex gap-2 justify-content-center mt-4">
+            <button class="btn btn-primary" onclick="window.print()">
+                <i class="fas fa-print me-2"></i>Cetak QR Code
+            </button>
+            <a href="{{ url_for('orders.online') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Kembali
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

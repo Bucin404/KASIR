@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% set hide_sidebar = true %}
+{% set hide_navbar = true %}
+{% block title %}Pemesanan - KASIR{% endblock %}
+{% block extra_css %}
+<style>
+    body { background: linear-gradient(135deg, #0f2a3d 0%, #1a4d6e 50%, #2ecc71 100%); }
+    .order-container {
+        max-width: 600px;
+        margin: 50px auto;
+        background: #fff;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+    .product-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .product-item:hover {
+        border-color: #3498db;
+        background: #f8f9fa;
+    }
+    .product-item.selected {
+        border-color: #2ecc71;
+        background: rgba(46, 204, 113, 0.1);
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="order-container">
+    <h3 class="text-center mb-4">
+        <i class="fas fa-shopping-cart me-2"></i>Pemesanan Online
+    </h3>
+    <form id="orderForm">
+        <div class="mb-3">
+            <label class="form-label">Nomor Meja</label>
+            <input type="text" class="form-control" name="table" placeholder="Contoh: A1" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Pilih Menu</label>
+            <div id="menuList">
+                <div class="product-item" onclick="toggleProduct(this, 1, 'Nasi Goreng', 15000)">
+                    <div>
+                        <strong>Nasi Goreng</strong><br>
+                        <small class="text-muted">Rp 15.000</small>
+                    </div>
+                    <input type="checkbox" name="products[]" value="1">
+                </div>
+                <div class="product-item" onclick="toggleProduct(this, 2, 'Mie Goreng', 12000)">
+                    <div>
+                        <strong>Mie Goreng</strong><br>
+                        <small class="text-muted">Rp 12.000</small>
+                    </div>
+                    <input type="checkbox" name="products[]" value="2">
+                </div>
+                <div class="product-item" onclick="toggleProduct(this, 3, 'Es Teh', 5000)">
+                    <div>
+                        <strong>Es Teh</strong><br>
+                        <small class="text-muted">Rp 5.000</small>
+                    </div>
+                    <input type="checkbox" name="products[]" value="3">
+                </div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Catatan (Opsional)</label>
+            <textarea class="form-control" name="notes" rows="2" placeholder="Tambahkan catatan..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">
+            <i class="fas fa-paper-plane me-2"></i>Kirim Pesanan
+        </button>
+    </form>
+</div>
+<script>
+    function toggleProduct(element, id, name, price) {
+        element.classList.toggle('selected');
+        const checkbox = element.querySelector('input[type="checkbox"]');
+        checkbox.checked = !checkbox.checked;
+    }
+    
+    document.getElementById('orderForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        alert('Pesanan berhasil dikirim!');
+        this.reset();
+        document.querySelectorAll('.product-item').forEach(item => item.classList.remove('selected'));
+    });
+</script>
+{% endblock %}

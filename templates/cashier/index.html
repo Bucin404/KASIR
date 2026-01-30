@@ -1,0 +1,535 @@
+{% extends "base.html" %}
+
+{% block title %}POS Kasir - KASIR{% endblock %}
+{% block page_title %}POS Kasir{% endblock %}
+
+{% block extra_css %}
+<style>
+    .pos-container {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: 20px;
+        height: calc(100vh - 130px);
+    }
+    
+    /* Products Section */
+    .products-section {
+        background: #fff;
+        border-radius: 15px;
+        padding: 20px;
+        overflow-y: auto;
+    }
+    
+    .category-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    
+    .category-tab {
+        padding: 10px 20px;
+        border: none;
+        background: #f0f0f0;
+        border-radius: 50px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+    }
+    
+    .category-tab.active {
+        background: linear-gradient(135deg, #3498db, #2ecc71);
+        color: #fff;
+    }
+    
+    .products-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 15px;
+    }
+    
+    .product-card {
+        background: #fff;
+        border: 2px solid #e0e0e0;
+        border-radius: 15px;
+        padding: 15px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .product-card:hover {
+        transform: translateY(-5px);
+        border-color: #3498db;
+        box-shadow: 0 8px 25px rgba(52, 152, 219, 0.3);
+    }
+    
+    .product-icon {
+        width: 60px;
+        height: 60px;
+        margin: 0 auto 10px;
+        background: linear-gradient(135deg, #3498db, #2ecc71);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 1.5rem;
+    }
+    
+    .product-name {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 5px;
+        font-size: 0.9rem;
+    }
+    
+    .product-price {
+        color: #27ae60;
+        font-weight: 700;
+        font-size: 1rem;
+    }
+    
+    /* Cart Section */
+    .cart-section {
+        background: #fff;
+        border-radius: 15px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+    
+    .cart-header {
+        background: linear-gradient(135deg, #0f2a3d, #1a4d6e);
+        color: #fff;
+        padding: 20px;
+        font-weight: 700;
+        font-size: 1.2rem;
+    }
+    
+    .cart-items {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+    }
+    
+    .cart-item {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 10px;
+        margin-bottom: 10px;
+    }
+    
+    .cart-item-info {
+        flex: 1;
+    }
+    
+    .cart-item-name {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 5px;
+    }
+    
+    .cart-item-price {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+    }
+    
+    .cart-item-qty {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-right: 15px;
+    }
+    
+    .qty-btn {
+        width: 30px;
+        height: 30px;
+        border: none;
+        background: #3498db;
+        color: #fff;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: 700;
+    }
+    
+    .qty-value {
+        min-width: 30px;
+        text-align: center;
+        font-weight: 700;
+    }
+    
+    .btn-remove {
+        width: 30px;
+        height: 30px;
+        border: none;
+        background: #e74c3c;
+        color: #fff;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    
+    .cart-empty {
+        text-align: center;
+        padding: 40px 20px;
+        color: #95a5a6;
+    }
+    
+    .cart-summary {
+        padding: 20px;
+        border-top: 2px solid #f0f0f0;
+    }
+    
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: 0.95rem;
+    }
+    
+    .summary-row.total {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #2c3e50;
+        padding-top: 10px;
+        border-top: 2px solid #e0e0e0;
+        margin-top: 10px;
+    }
+    
+    .cart-actions {
+        padding: 20px;
+        border-top: 2px solid #f0f0f0;
+    }
+    
+    .btn-checkout {
+        width: 100%;
+        background: linear-gradient(135deg, #2ecc71, #27ae60);
+        color: #fff;
+        border: none;
+        padding: 15px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+    }
+    
+    .btn-checkout:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+    }
+    
+    .btn-clear {
+        width: 100%;
+        background: #e74c3c;
+        color: #fff;
+        border: none;
+        padding: 12px;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+    
+    @media (max-width: 992px) {
+        .pos-container {
+            grid-template-columns: 1fr;
+            height: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-container">
+    <!-- Products Section -->
+    <div class="products-section">
+        <div class="category-tabs">
+            <button class="category-tab active" data-category="all">Semua</button>
+            <button class="category-tab" data-category="makanan">Makanan</button>
+            <button class="category-tab" data-category="minuman">Minuman</button>
+            <button class="category-tab" data-category="snack">Snack</button>
+        </div>
+        
+        <div class="products-grid" id="productsGrid">
+            <!-- Products will be loaded here -->
+        </div>
+    </div>
+    
+    <!-- Cart Section -->
+    <div class="cart-section">
+        <div class="cart-header">
+            <i class="fas fa-shopping-cart me-2"></i>Keranjang
+        </div>
+        
+        <div class="cart-items" id="cartItems">
+            <div class="cart-empty">
+                <i class="fas fa-shopping-cart fa-3x mb-3"></i>
+                <p>Keranjang masih kosong</p>
+            </div>
+        </div>
+        
+        <div class="cart-summary">
+            <div class="summary-row">
+                <span>Subtotal:</span>
+                <span id="subtotal">Rp 0</span>
+            </div>
+            <div class="summary-row">
+                <span>Pajak (10%):</span>
+                <span id="tax">Rp 0</span>
+            </div>
+            <div class="summary-row total">
+                <span>Total:</span>
+                <span id="total">Rp 0</span>
+            </div>
+        </div>
+        
+        <div class="cart-actions">
+            <button class="btn-checkout" onclick="checkout()">
+                <i class="fas fa-cash-register me-2"></i>Checkout
+            </button>
+            <button class="btn-clear" onclick="clearCart()">
+                <i class="fas fa-trash me-2"></i>Kosongkan
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal fade" id="paymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Pembayaran</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Total Pembayaran</label>
+                    <input type="text" class="form-control form-control-lg" id="totalPayment" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Jumlah Bayar</label>
+                    <input type="number" class="form-control form-control-lg" id="paidAmount" 
+                           placeholder="Masukkan jumlah bayar" autofocus>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Kembalian</label>
+                    <input type="text" class="form-control form-control-lg" id="changeAmount" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Metode Pembayaran</label>
+                    <select class="form-select" id="paymentMethod">
+                        <option value="cash">Tunai</option>
+                        <option value="card">Kartu</option>
+                        <option value="qr">QR Code</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-success" onclick="processPayment()">
+                    <i class="fas fa-check me-2"></i>Proses
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Sample products data
+    const products = [
+        { id: 1, name: 'Nasi Goreng', price: 15000, category: 'makanan', icon: 'fa-bowl-rice' },
+        { id: 2, name: 'Mie Goreng', price: 12000, category: 'makanan', icon: 'fa-bowl-food' },
+        { id: 3, name: 'Ayam Geprek', price: 18000, category: 'makanan', icon: 'fa-drumstick-bite' },
+        { id: 4, name: 'Sate Ayam', price: 20000, category: 'makanan', icon: 'fa-shish-kebab' },
+        { id: 5, name: 'Es Teh', price: 5000, category: 'minuman', icon: 'fa-glass-water' },
+        { id: 6, name: 'Es Jeruk', price: 7000, category: 'minuman', icon: 'fa-lemon' },
+        { id: 7, name: 'Kopi', price: 8000, category: 'minuman', icon: 'fa-mug-hot' },
+        { id: 8, name: 'Jus Alpukat', price: 12000, category: 'minuman', icon: 'fa-blender' },
+        { id: 9, name: 'Keripik', price: 5000, category: 'snack', icon: 'fa-cookie-bite' },
+        { id: 10, name: 'Roti Bakar', price: 10000, category: 'snack', icon: 'fa-bread-slice' },
+    ];
+    
+    let cart = [];
+    
+    // Load products
+    function loadProducts(category = 'all') {
+        const grid = document.getElementById('productsGrid');
+        const filtered = category === 'all' ? products : products.filter(p => p.category === category);
+        
+        grid.innerHTML = filtered.map(product => `
+            <div class="product-card" onclick="addToCart(${product.id})">
+                <div class="product-icon">
+                    <i class="fas ${product.icon}"></i>
+                </div>
+                <div class="product-name">${product.name}</div>
+                <div class="product-price">Rp ${product.price.toLocaleString()}</div>
+            </div>
+        `).join('');
+    }
+    
+    // Category tabs
+    document.querySelectorAll('.category-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            loadProducts(this.dataset.category);
+        });
+    });
+    
+    // Add to cart
+    function addToCart(productId) {
+        const product = products.find(p => p.id === productId);
+        const existingItem = cart.find(item => item.id === productId);
+        
+        if (existingItem) {
+            existingItem.qty++;
+        } else {
+            cart.push({ ...product, qty: 1 });
+        }
+        
+        updateCart();
+    }
+    
+    // Update cart
+    function updateCart() {
+        const cartItems = document.getElementById('cartItems');
+        
+        if (cart.length === 0) {
+            cartItems.innerHTML = `
+                <div class="cart-empty">
+                    <i class="fas fa-shopping-cart fa-3x mb-3"></i>
+                    <p>Keranjang masih kosong</p>
+                </div>
+            `;
+        } else {
+            cartItems.innerHTML = cart.map(item => `
+                <div class="cart-item">
+                    <div class="cart-item-info">
+                        <div class="cart-item-name">${item.name}</div>
+                        <div class="cart-item-price">Rp ${item.price.toLocaleString()}</div>
+                    </div>
+                    <div class="cart-item-qty">
+                        <button class="qty-btn" onclick="updateQty(${item.id}, -1)">-</button>
+                        <span class="qty-value">${item.qty}</span>
+                        <button class="qty-btn" onclick="updateQty(${item.id}, 1)">+</button>
+                    </div>
+                    <button class="btn-remove" onclick="removeItem(${item.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        updateSummary();
+    }
+    
+    // Update quantity
+    function updateQty(productId, change) {
+        const item = cart.find(i => i.id === productId);
+        if (item) {
+            item.qty += change;
+            if (item.qty <= 0) {
+                removeItem(productId);
+            } else {
+                updateCart();
+            }
+        }
+    }
+    
+    // Remove item
+    function removeItem(productId) {
+        cart = cart.filter(item => item.id !== productId);
+        updateCart();
+    }
+    
+    // Clear cart
+    function clearCart() {
+        if (confirm('Kosongkan keranjang?')) {
+            cart = [];
+            updateCart();
+        }
+    }
+    
+    // Update summary
+    function updateSummary() {
+        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+        const tax = subtotal * 0.1;
+        const total = subtotal + tax;
+        
+        document.getElementById('subtotal').textContent = `Rp ${subtotal.toLocaleString()}`;
+        document.getElementById('tax').textContent = `Rp ${tax.toLocaleString()}`;
+        document.getElementById('total').textContent = `Rp ${total.toLocaleString()}`;
+    }
+    
+    // Checkout
+    function checkout() {
+        if (cart.length === 0) {
+            alert('Keranjang masih kosong!');
+            return;
+        }
+        
+        const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * 1.1;
+        document.getElementById('totalPayment').value = `Rp ${total.toLocaleString()}`;
+        document.getElementById('paidAmount').value = '';
+        document.getElementById('changeAmount').value = '';
+        
+        const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
+        modal.show();
+    }
+    
+    // Calculate change
+    document.getElementById('paidAmount').addEventListener('input', function() {
+        const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * 1.1;
+        const paid = parseFloat(this.value) || 0;
+        const change = paid - total;
+        
+        document.getElementById('changeAmount').value = change >= 0 ? 
+            `Rp ${change.toLocaleString()}` : 'Kurang bayar';
+    });
+    
+    // Process payment
+    function processPayment() {
+        const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * 1.1;
+        const paid = parseFloat(document.getElementById('paidAmount').value) || 0;
+        
+        if (paid < total) {
+            alert('Jumlah bayar kurang!');
+            return;
+        }
+        
+        // Save transaction
+        const transaction = {
+            items: cart,
+            subtotal: cart.reduce((sum, item) => sum + (item.price * item.qty), 0),
+            tax: cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * 0.1,
+            total: total,
+            paid: paid,
+            change: paid - total,
+            method: document.getElementById('paymentMethod').value,
+            date: new Date().toISOString()
+        };
+        
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('paymentModal')).hide();
+        
+        // Print receipt
+        window.open(`/cashier/receipt?data=${encodeURIComponent(JSON.stringify(transaction))}`, '_blank');
+        
+        // Clear cart
+        cart = [];
+        updateCart();
+        
+        alert('Transaksi berhasil!');
+    }
+    
+    // Initialize
+    loadProducts();
+</script>
+{% endblock %}

@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% set hide_sidebar = true %}
+{% set hide_navbar = true %}
+
+{% block title %}Register - KASIR{% endblock %}
+
+{% block extra_css %}
+<style>
+    .register-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #0f2a3d 0%, #1a4d6e 50%, #2ecc71 100%);
+        position: relative;
+        overflow: hidden;
+        padding: 40px 20px;
+    }
+    
+    .register-container::before {
+        content: '';
+        position: absolute;
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(circle, rgba(52, 152, 219, 0.3) 0%, transparent 70%);
+        border-radius: 50%;
+        top: -250px;
+        left: -250px;
+        animation: float 6s ease-in-out infinite;
+    }
+    
+    .register-container::after {
+        content: '';
+        position: absolute;
+        width: 400px;
+        height: 400px;
+        background: radial-gradient(circle, rgba(46, 204, 113, 0.2) 0%, transparent 70%);
+        border-radius: 50%;
+        bottom: -200px;
+        right: -200px;
+        animation: float 8s ease-in-out infinite reverse;
+    }
+    
+    @keyframes float {
+        0%, 100% { transform: translate(0, 0); }
+        50% { transform: translate(30px, 30px); }
+    }
+    
+    .register-card {
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+        max-width: 500px;
+        width: 100%;
+        position: relative;
+        z-index: 1;
+        animation: slideUp 0.5s ease;
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .register-header {
+        background: linear-gradient(135deg, #0f2a3d, #1a4d6e);
+        padding: 30px;
+        text-align: center;
+        position: relative;
+    }
+    
+    .register-icon {
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(135deg, #3498db, #2ecc71);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 15px;
+        font-size: 2rem;
+        color: #fff;
+        box-shadow: 0 10px 30px rgba(52, 152, 219, 0.4);
+    }
+    
+    .register-header h2 {
+        color: #fff;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+    
+    .register-header p {
+        color: rgba(255, 255, 255, 0.8);
+        margin: 0;
+    }
+    
+    .register-body {
+        padding: 30px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #0f2a3d;
+        margin-bottom: 8px;
+        display: block;
+    }
+    
+    .form-control, .form-select {
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 12px 15px;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.2);
+    }
+    
+    .input-group {
+        position: relative;
+    }
+    
+    .input-icon {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #999;
+        font-size: 1.1rem;
+        z-index: 10;
+    }
+    
+    .input-group .form-control,
+    .input-group .form-select {
+        padding-left: 45px;
+    }
+    
+    .btn-register {
+        width: 100%;
+        background: linear-gradient(135deg, #3498db, #2ecc71);
+        border: none;
+        color: #fff;
+        padding: 14px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+    }
+    
+    .btn-register:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+    }
+    
+    .register-footer {
+        text-align: center;
+        margin-top: 25px;
+        padding-top: 25px;
+        border-top: 1px solid #e0e0e0;
+    }
+    
+    .register-footer a {
+        color: #3498db;
+        text-decoration: none;
+        font-weight: 600;
+        transition: color 0.3s ease;
+    }
+    
+    .register-footer a:hover {
+        color: #2ecc71;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="register-container">
+    <div class="register-card">
+        <div class="register-header">
+            <div class="register-icon">
+                <i class="fas fa-user-plus"></i>
+            </div>
+            <h2>Daftar Akun</h2>
+            <p>Buat akun baru untuk KASIR</p>
+        </div>
+        
+        <div class="register-body">
+            <form action="{{ url_for('auth.register') }}" method="POST">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <div class="input-group">
+                        <i class="fas fa-user input-icon"></i>
+                        <input type="text" class="form-control" name="username" 
+                               placeholder="Masukkan username" required autofocus>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <div class="input-group">
+                        <i class="fas fa-envelope input-icon"></i>
+                        <input type="email" class="form-control" name="email" 
+                               placeholder="Masukkan email" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <div class="input-group">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input type="password" class="form-control" name="password" 
+                               placeholder="Masukkan password" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Konfirmasi Password</label>
+                    <div class="input-group">
+                        <i class="fas fa-lock input-icon"></i>
+                        <input type="password" class="form-control" name="confirm_password" 
+                               placeholder="Konfirmasi password" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Role</label>
+                    <div class="input-group">
+                        <i class="fas fa-user-tag input-icon"></i>
+                        <select class="form-select" name="role" required>
+                            <option value="">Pilih Role</option>
+                            <option value="cashier">Kasir</option>
+                            <option value="finance">Keuangan</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                    <label class="form-check-label" for="agreeTerms">
+                        Saya setuju dengan <a href="#" class="text-primary">syarat & ketentuan</a>
+                    </label>
+                </div>
+                
+                <button type="submit" class="btn-register">
+                    <i class="fas fa-user-plus me-2"></i>Daftar
+                </button>
+            </form>
+            
+            <div class="register-footer">
+                <p class="text-muted mb-2">Sudah punya akun?</p>
+                <a href="{{ url_for('auth.login') }}">Login Sekarang</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
