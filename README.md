@@ -62,6 +62,7 @@ Tiga tingkatan role pengguna:
 - Python 3.8 atau lebih tinggi
 - pip (Python package manager)
 - Virtual environment (recommended)
+- **MySQL Server** (untuk production) atau SQLite (untuk development)
 
 ### Langkah Instalasi
 
@@ -84,26 +85,100 @@ venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 ```
 
-4. **Setup environment variables**
+4. **Setup database MySQL (opsional, untuk production)**
+
+**a. Install MySQL Server** (jika belum terinstall)
+- Windows: Download dari [MySQL Official](https://dev.mysql.com/downloads/mysql/)
+- Linux: `sudo apt-get install mysql-server`
+- macOS: `brew install mysql`
+
+**b. Buat database**
+```sql
+# Login ke MySQL
+mysql -u root -p
+
+# Buat database
+CREATE DATABASE kasir_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+# Buat user dan berikan akses (opsional, untuk keamanan)
+CREATE USER 'kasir_user'@'localhost' IDENTIFIED BY 'your_secure_password';
+GRANT ALL PRIVILEGES ON kasir_db.* TO 'kasir_user'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+5. **Setup environment variables**
 ```bash
 cp .env.example .env
 # Edit .env file dengan konfigurasi Anda
 ```
 
-5. **Inisialisasi database**
-```bash
-python app_new.py
-# Database akan otomatis dibuat dengan sample data
+**Konfigurasi untuk MySQL:**
+```env
+# Pilihan 1: Gunakan connection string lengkap
+DATABASE_URL=mysql+pymysql://kasir_user:your_secure_password@localhost:3306/kasir_db
+
+# Pilihan 2: Gunakan parameter terpisah
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=kasir_user
+MYSQL_PASSWORD=your_secure_password
+MYSQL_DATABASE=kasir_db
 ```
 
-6. **Jalankan aplikasi**
+**Konfigurasi untuk SQLite (development):**
+```env
+# Biarkan kosong atau gunakan SQLite
+DATABASE_URL=sqlite:///kasir.db
+```
+
+6. **Inisialisasi database**
 ```bash
-python app_new.py
+python app.py
+# Database akan otomatis dibuat dengan menu Solaria
+```
+
+7. **Jalankan aplikasi**
+```bash
+python app.py
 ```
 
 Aplikasi akan berjalan di `http://localhost:8000`
 
 ## 🔧 Konfigurasi
+
+### Database Configuration
+
+Aplikasi mendukung dua jenis database:
+
+#### 1. **MySQL (Recommended untuk Production)**
+- Performa lebih baik untuk concurrent users
+- Scalable untuk growth
+- Support transactions dan ACID compliance
+- Konfigurasi via environment variables
+
+**Connection String Format:**
+```env
+DATABASE_URL=mysql+pymysql://[user]:[password]@[host]:[port]/[database]
+```
+
+**Atau parameter terpisah:**
+```env
+MYSQL_HOST=localhost          # atau IP server MySQL
+MYSQL_PORT=3306               # default MySQL port
+MYSQL_USER=kasir_user         # MySQL username
+MYSQL_PASSWORD=your_password  # MySQL password
+MYSQL_DATABASE=kasir_db       # Nama database
+```
+
+#### 2. **SQLite (Default untuk Development)**
+- Tidak perlu instalasi server database
+- Portable dan mudah untuk testing
+- Auto-fallback jika MySQL tidak dikonfigurasi
+
+```env
+DATABASE_URL=sqlite:///kasir.db
+```
 
 ### Environment Variables (.env)
 
@@ -113,8 +188,12 @@ SECRET_KEY=your-secret-key-here-change-in-production
 FLASK_ENV=development
 FLASK_DEBUG=True
 
-# Database
-DATABASE_URL=sqlite:///kasir.db
+# Database Configuration
+# Untuk MySQL:
+DATABASE_URL=mysql+pymysql://kasir_user:password@localhost:3306/kasir_db
+
+# Untuk SQLite (default):
+# DATABASE_URL=sqlite:///kasir.db
 
 # Midtrans Payment Gateway (Sandbox)
 MIDTRANS_SERVER_KEY=SB-Mid-server-YOUR_SERVER_KEY
@@ -188,7 +267,7 @@ KASIR/
 ├── .gitignore           # Git ignore rules
 │
 ├── data/
-│   └── sample_products.py  # Sample product data
+│   └── sample_products.py  # Menu Solaria (54 items)
 │
 ├── routes/               # Blueprint routes
 │   ├── auth_routes.py   # Authentication routes
@@ -230,11 +309,45 @@ KASIR/
 - [ ] Gunakan SECRET_KEY yang kuat dan unik
 - [ ] Aktifkan HTTPS (SSL/TLS)
 - [ ] Set `SESSION_COOKIE_SECURE=True`
-- [ ] Gunakan database production (PostgreSQL/MySQL)
+- [x] Gunakan database production (MySQL) - **Sudah dikonfigurasi!**
 - [ ] Enable rate limiting
 - [ ] Setup logging dan monitoring
 - [ ] Regular security updates
 - [ ] Backup database secara berkala
+
+## 🍽️ Menu Solaria
+
+Aplikasi ini menggunakan menu asli dari **Solaria Restaurant** dengan 54 item menu yang diambil dari PDF menu resmi.
+
+### Kategori Menu:
+
+1. **Nasi Goreng** (8 items) - Rp 20.000 - Rp 28.000
+   - Nasi Goreng Mlarat, Spesial, Cabe Ijo, Sosis, dll.
+
+2. **Mie** (6 items) - Rp 22.000 - Rp 30.000
+   - Mie Goreng/Siram dengan Ayam, Seafood, atau Sapi
+
+3. **Kwetiau** (6 items) - Rp 25.000 - Rp 30.000
+   - Kwetiau Goreng/Siram dengan berbagai topping
+
+4. **Snack** (6 items) - Rp 12.000 - Rp 20.000
+   - Fish Cake, Kentang Goreng, Otak-otak, Sosis, Mix OTP
+
+5. **Menu Lain** (6 items) - Rp 5.000 - Rp 30.000
+   - Cap Cay, Sapo Tahu, Nasi Putih, Telur
+
+6. **Paket** (8 items) - Rp 25.000 - Rp 45.000
+   - Paket lengkap dengan minuman (Nasi/Mie/Kwetiau + Minuman)
+
+7. **Minuman** (14 items) - Rp 3.000 - Rp 15.000
+   - Teh, Kopi, Thai Tea, Lemon Tea, Lemonade, Cappucino, dll.
+
+**Sumber Menu**: `halaman 2 menu solaria_260129_224254.pdf`
+
+**Catatan**: 
+- Semua harga sesuai dengan menu asli Solaria
+- Kode item menggunakan kode asli dari menu (111, 121, 131, dll.)
+- Menu dapat dikustomisasi melalui admin panel
 
 ## 🧪 Testing
 
