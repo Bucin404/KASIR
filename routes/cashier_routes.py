@@ -24,7 +24,7 @@ def index():
     
     products = Product.query.filter_by(is_active=True).order_by(Product.category, Product.name).all()
     
-    return render_template('cashier/pos.html', 
+    return render_template('cashier/index.html', 
         products=products,
         categories=categories
     )

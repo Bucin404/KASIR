@@ -297,7 +297,7 @@ def manage_orders():
     query = query.order_by(OnlineOrder.created_at.desc())
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     
-    return render_template('order/manage.html',
+    return render_template('orders/manage.html',
         orders=pagination.items,
         pagination=pagination,
         status_filter=status_filter
