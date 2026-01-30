@@ -167,7 +167,8 @@ def init_database():
                     image_url=item.get('image', ''),
                     is_popular=item.get('popular', False),
                     is_active=True,
-                    stock=100
+                    stock=100,
+                    spicy_level=item.get('spicy_level', 'normal')
                 )
                 db.session.add(product)
             

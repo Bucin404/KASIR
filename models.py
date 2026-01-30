@@ -136,6 +136,7 @@ class Product(db.Model):
     is_popular = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
     stock = db.Column(db.Integer, default=0)
+    spicy_level = db.Column(db.String(20), default='normal')  # normal, sedang, pedas
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -153,7 +154,8 @@ class Product(db.Model):
             'image': self.image_url,
             'popular': self.is_popular,
             'is_active': self.is_active,
-            'stock': self.stock
+            'stock': self.stock,
+            'spicy_level': self.spicy_level
         }
 
 class FinancialRecord(db.Model):

@@ -98,6 +98,29 @@ def users():
         pagination=pagination
     )
 
+@admin_bp.route('/users/<int:user_id>')
+@admin_required
+def user_detail(user_id):
+    """View user details"""
+    user = User.query.get_or_404(user_id)
+    
+    # Get user statistics
+    if user.role == 'kasir':
+        transaction_count = Transaction.query.filter_by(cashier_id=user_id).count()
+        total_sales = db.session.query(func.sum(Transaction.total)).filter(
+            Transaction.cashier_id == user_id,
+            Transaction.payment_status == 'paid'
+        ).scalar() or 0
+    else:
+        transaction_count = 0
+        total_sales = 0
+    
+    return render_template('admin/user_detail.html',
+        user=user,
+        transaction_count=transaction_count,
+        total_sales=total_sales
+    )
+
 @admin_bp.route('/users/add', methods=['GET', 'POST'])
 @admin_required
 def add_user():

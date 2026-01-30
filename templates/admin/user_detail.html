@@ -164,7 +164,7 @@
         </div>
         
         <div class="action-buttons">
-            <a href="{{ url_for('admin.user_form', user_id=user.id) if user else '#' }}" class="btn-edit">
+            <a href="{{ url_for('admin.edit_user', user_id=user.id) if user else '#' }}" class="btn-edit">
                 <i class="fas fa-edit me-2"></i>Edit
             </a>
             <button onclick="deleteUser()" class="btn-delete">
