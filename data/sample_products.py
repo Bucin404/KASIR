@@ -6,7 +6,7 @@ FOOD_MENU = [
         "name": "Nasi Goreng Mlarat",
         "price": 20000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=500&h=350&fit=crop",
+        "image": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=500&h=350&fit=crop&q=80",
         "description": "Nasi goreng sederhana namun lezat",
         "popular": False,
         "spicy_level": "normal"  # pedas, sedang, normal
@@ -16,7 +16,7 @@ FOOD_MENU = [
         "name": "Nasi Goreng Spesial",
         "price": 22000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=500&h=350&fit=crop",
+        "image": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=500&h=350&fit=crop&q=80",
         "description": "Nasi goreng dengan bumbu spesial",
         "popular": True,
         "spicy_level": "sedang"
@@ -26,7 +26,7 @@ FOOD_MENU = [
         "name": "Nasi Goreng Cabe Ijo",
         "price": 22000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=500&h=350&fit=crop",
+        "image": "https://images.unsplash.com/photo-1637806930600-37fa8892069d?w=500&h=350&fit=crop&q=80",
         "description": "Nasi goreng dengan cabe hijau pedas",
         "popular": True,
         "spicy_level": "pedas"
@@ -36,7 +36,7 @@ FOOD_MENU = [
         "name": "Nasi Goreng Sosis",
         "price": 23000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1516684732162-798a0062be99?w=500&h=350&fit=crop",
+        "image": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=500&h=350&fit=crop&q=80",
         "description": "Nasi goreng dengan sosis",
         "popular": False,
         "spicy_level": "normal"
@@ -46,7 +46,7 @@ FOOD_MENU = [
         "name": "Nasi Goreng Modern Warno",
         "price": 24000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1596040033229-a0b3b6e75281?w=500&h=350&fit=crop",
+        "image": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=500&h=350&fit=crop&q=80",
         "description": "Nasi goreng modern dengan berbagai warna",
         "popular": False,
         "spicy_level": "sedang"
@@ -56,7 +56,7 @@ FOOD_MENU = [
         "name": "Nasi Goreng Terimaskenthir",
         "price": 25000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1617093727343-374698b1b08d?w=500&h=350&fit=crop",
+        "image": "https://images.unsplash.com/photo-1645177628172-a94c1f96e6db?w=500&h=350&fit=crop&q=80",
         "description": "Nasi goreng dengan udang dan cumi",
         "popular": True,
         "spicy_level": "sedang"
@@ -66,7 +66,7 @@ FOOD_MENU = [
         "name": "Nasi Goreng Pete",
         "price": 25000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?w=500&h=350&fit=crop",
+        "image": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=500&h=350&fit=crop&q=80",
         "description": "Nasi goreng dengan pete",
         "popular": False,
         "spicy_level": "pedas"
@@ -76,7 +76,7 @@ FOOD_MENU = [
         "name": "Nasi Goreng Seafood",
         "price": 28000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1516684732162-798a0062be99?w=500&h=350&fit=crop",
+        "image": "https://images.unsplash.com/photo-1645177628172-a94c1f96e6db?w=500&h=350&fit=crop&q=80",
         "description": "Nasi goreng dengan seafood",
         "popular": True,
         "spicy_level": "sedang"
@@ -88,7 +88,7 @@ FOOD_MENU = [
         "name": "Mie Goreng Ayam",
         "price": 22000,
         "category": "Mie",
-        "image": "https://images.unsplash.com/photo-1585032226651-759b368d7246?w=500&h=350&fit=crop",
+        "image": "https://images.unsplash.com/photo-1585032226651-759b368d7246?w=500&h=350&fit=crop&q=80",
         "description": "Mie goreng dengan ayam",
         "popular": True,
         "spicy_level": "normal"
