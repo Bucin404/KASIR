@@ -26,7 +26,7 @@
             --primary-purple: #764ba2;
             --accent-cyan: #00d4ff;
             --accent-pink: #f72585;
-            --sidebar-width: 280px;
+            --sidebar-width: 260px;
             --navbar-height: 75px;
             --glass-bg: rgba(255, 255, 255, 0.1);
             --glass-border: rgba(255, 255, 255, 0.2);
@@ -134,25 +134,26 @@
         
         .menu-section-title {
             color: rgba(255, 255, 255, 0.5);
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            padding: 0 25px;
-            margin-bottom: 15px;
+            letter-spacing: 1.5px;
+            padding: 0 20px;
+            margin-bottom: 12px;
             font-weight: 700;
         }
         
         .menu-item {
             display: flex;
             align-items: center;
-            padding: 15px 25px;
+            padding: 12px 20px;
             color: rgba(255, 255, 255, 0.85);
             text-decoration: none;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
-            margin: 8px 15px;
-            border-radius: 12px;
+            margin: 6px 12px;
+            border-radius: 10px;
             font-weight: 500;
+            font-size: 0.9rem;
         }
         
         .menu-item::before {
@@ -189,9 +190,9 @@
         }
         
         .menu-item i {
-            width: 28px;
-            margin-right: 15px;
-            font-size: 1.2rem;
+            width: 24px;
+            margin-right: 12px;
+            font-size: 1.1rem;
             text-align: center;
         }
         
@@ -433,7 +434,7 @@
         <nav class="sidebar-menu">
             {% if current_user.is_authenticated %}
                 <!-- Admin Section -->
-                {% if session.role == 'admin' %}
+                {% if current_user.role == 'admin' %}
                 <div class="menu-section">
                     <div class="menu-section-title">Admin</div>
                     <a href="{{ url_for('admin.dashboard') }}" class="menu-item {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
@@ -458,6 +459,10 @@
                     <a href="{{ url_for('order.manage_orders') }}" class="menu-item {% if request.endpoint and 'orders' in request.endpoint %}active{% endif %}">
                         <i class="fas fa-shopping-cart"></i>
                         <span>Pesanan Online</span>
+                    </a>
+                    <a href="{{ url_for('order.generate_qr') }}" class="menu-item {% if request.endpoint == 'order.generate_qr' %}active{% endif %}">
+                        <i class="fas fa-qrcode"></i>
+                        <span>Generate QR Code</span>
                     </a>
                 </div>
                 {% endif %}
