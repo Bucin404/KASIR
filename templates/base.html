@@ -145,15 +145,15 @@
         .menu-item {
             display: flex;
             align-items: center;
-            padding: 12px 20px;
+            padding: 10px 16px;
             color: rgba(255, 255, 255, 0.85);
             text-decoration: none;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
-            margin: 6px 12px;
-            border-radius: 10px;
+            margin: 5px 10px;
+            border-radius: 8px;
             font-weight: 500;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
         
         .menu-item::before {
@@ -190,9 +190,9 @@
         }
         
         .menu-item i {
-            width: 24px;
-            margin-right: 12px;
-            font-size: 1.1rem;
+            width: 22px;
+            margin-right: 10px;
+            font-size: 1rem;
             text-align: center;
         }
         
@@ -305,6 +305,34 @@
             color: rgba(255, 255, 255, 0.7);
             font-size: 0.8rem;
             text-transform: uppercase;
+        }
+        
+        /* Logout Button Styling */
+        .btn-logout {
+            background: linear-gradient(135deg, rgba(231, 76, 60, 0.3), rgba(231, 76, 60, 0.5));
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .btn-logout:hover {
+            background: linear-gradient(135deg, rgba(231, 76, 60, 0.5), rgba(231, 76, 60, 0.7));
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.5);
+            color: #fff;
+        }
+        
+        .btn-logout:active {
+            transform: translateY(0);
         }
         
         .logout-btn {
