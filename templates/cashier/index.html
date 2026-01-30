@@ -97,6 +97,27 @@
         font-size: 1rem;
     }
     
+    .spicy-indicator {
+        margin-top: 5px;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+    }
+    
+    .spicy-normal {
+        color: #95a5a6;
+    }
+    
+    .spicy-sedang {
+        color: #f39c12;
+    }
+    
+    .spicy-pedas {
+        color: #e74c3c;
+    }
+    
     /* Cart Section */
     .cart-section {
         background: #fff;
@@ -411,8 +432,28 @@
                 <div class="product-code">#${product.id}</div>
                 <div class="product-name">${product.name}</div>
                 <div class="product-price">Rp ${product.price.toLocaleString()}</div>
+                ${product.spicy_level ? `
+                    <div class="spicy-indicator spicy-${product.spicy_level}">
+                        ${getSpicyIcon(product.spicy_level)}
+                        <span>${getSpicyLabel(product.spicy_level)}</span>
+                    </div>
+                ` : ''}
             </div>
         `).join('');
+    }
+    
+    // Get spicy icon based on level
+    function getSpicyIcon(level) {
+        if (level === 'pedas') return '<i class="fas fa-pepper-hot"></i><i class="fas fa-pepper-hot"></i><i class="fas fa-pepper-hot"></i>';
+        if (level === 'sedang') return '<i class="fas fa-pepper-hot"></i><i class="fas fa-pepper-hot"></i>';
+        return '<i class="fas fa-pepper-hot"></i>';
+    }
+    
+    // Get spicy label
+    function getSpicyLabel(level) {
+        if (level === 'pedas') return 'Pedas';
+        if (level === 'sedang') return 'Sedang';
+        return 'Normal';
     }
     
     // Search functionality
