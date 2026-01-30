@@ -152,7 +152,7 @@ FOOD_MENU = [
         "category": "Snack",
         "image": "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=500&h=350&fit=crop",
         "description": "Kue ikan goreng",
-        "popular": False
+        "popular": False,
         "spicy_level": "normal"
     },
     {
@@ -162,7 +162,7 @@ FOOD_MENU = [
         "category": "Snack",
         "image": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=500&h=350&fit=crop",
         "description": "Kentang goreng crispy",
-        "popular": True
+        "popular": True,
         "spicy_level": "sedang"
     },
     {
@@ -172,7 +172,7 @@ FOOD_MENU = [
         "category": "Snack",
         "image": "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=500&h=350&fit=crop",
         "description": "Otak-otak ikan bakar",
-        "popular": False
+        "popular": False,
         "spicy_level": "normal"
     },
     {
@@ -182,7 +182,7 @@ FOOD_MENU = [
         "category": "Snack",
         "image": "https://images.unsplash.com/photo-1612844870777-7908abae7f42?w=500&h=350&fit=crop",
         "description": "Sosis goreng crispy",
-        "popular": True
+        "popular": True,
         "spicy_level": "sedang"
     },
     {
@@ -192,7 +192,7 @@ FOOD_MENU = [
         "category": "Snack",
         "image": "https://images.unsplash.com/photo-1612844870777-7908abae7f42?w=500&h=350&fit=crop",
         "description": "Sosis bakar dengan bumbu",
-        "popular": False
+        "popular": False,
         "spicy_level": "normal"
     },
     {
@@ -202,7 +202,7 @@ FOOD_MENU = [
         "category": "Snack",
         "image": "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=500&h=350&fit=crop",
         "description": "Mix otak-otak, telur, dan pisang",
-        "popular": True
+        "popular": True,
         "spicy_level": "normal"
     },
     
@@ -214,7 +214,7 @@ FOOD_MENU = [
         "category": "Kwetiau",
         "image": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=500&h=350&fit=crop",
         "description": "Kwetiau goreng dengan ayam",
-        "popular": True
+        "popular": True,
         "spicy_level": "sedang"
     },
     {
@@ -224,7 +224,7 @@ FOOD_MENU = [
         "category": "Kwetiau",
         "image": "https://images.unsplash.com/photo-1585032226651-759b368d7246?w=500&h=350&fit=crop",
         "description": "Kwetiau siram dengan ayam",
-        "popular": False
+        "popular": False,
         "spicy_level": "normal"
     },
     {
@@ -234,7 +234,7 @@ FOOD_MENU = [
         "category": "Kwetiau",
         "image": "https://images.unsplash.com/photo-1617093727343-374698b1b08d?w=500&h=350&fit=crop",
         "description": "Kwetiau goreng dengan seafood",
-        "popular": True
+        "popular": True,
         "spicy_level": "sedang"
     },
     {
@@ -244,7 +244,7 @@ FOOD_MENU = [
         "category": "Kwetiau",
         "image": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=500&h=350&fit=crop",
         "description": "Kwetiau siram dengan seafood",
-        "popular": False
+        "popular": False,
         "spicy_level": "sedang"
     },
     {
@@ -254,7 +254,7 @@ FOOD_MENU = [
         "category": "Kwetiau",
         "image": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=500&h=350&fit=crop",
         "description": "Kwetiau goreng dengan sapi",
-        "popular": False
+        "popular": False,
         "spicy_level": "sedang"
     },
     {
@@ -264,7 +264,7 @@ FOOD_MENU = [
         "category": "Kwetiau",
         "image": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=500&h=350&fit=crop",
         "description": "Kwetiau siram dengan sapi",
-        "popular": False
+        "popular": False,
         "spicy_level": "normal"
     },
     
@@ -276,7 +276,7 @@ FOOD_MENU = [
         "category": "Menu Lain",
         "image": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=500&h=350&fit=crop",
         "description": "Cap cay goreng dengan ayam",
-        "popular": False
+        "popular": False,
         "spicy_level": "sedang"
     },
     {
@@ -286,7 +286,7 @@ FOOD_MENU = [
         "category": "Menu Lain",
         "image": "https://images.unsplash.com/photo-1617093727343-374698b1b08d?w=500&h=350&fit=crop",
         "description": "Cap cay goreng dengan seafood",
-        "popular": True
+        "popular": True,
         "spicy_level": "sedang"
     },
     {
@@ -296,7 +296,7 @@ FOOD_MENU = [
         "category": "Menu Lain",
         "image": "https://images.unsplash.com/photo-1546069901-eacef0df6022?w=500&h=350&fit=crop",
         "description": "Sapo tahu dengan ayam",
-        "popular": True
+        "popular": True,
         "spicy_level": "normal"
     },
     {
@@ -306,7 +306,7 @@ FOOD_MENU = [
         "category": "Menu Lain",
         "image": "https://images.unsplash.com/photo-1546069901-eacef0df6022?w=500&h=350&fit=crop",
         "description": "Sapo tahu dengan seafood",
-        "popular": True
+        "popular": True,
         "spicy_level": "sedang"
     },
     {
@@ -316,7 +316,7 @@ FOOD_MENU = [
         "category": "Menu Lain",
         "image": "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=500&h=350&fit=crop",
         "description": "Nasi putih hangat",
-        "popular": False
+        "popular": False,
         "spicy_level": "normal"
     },
     {
@@ -326,7 +326,7 @@ FOOD_MENU = [
         "category": "Menu Lain",
         "image": "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=500&h=350&fit=crop",
         "description": "Telur mata sapi atau dadar",
-        "popular": False
+        "popular": False,
         "spicy_level": "normal"
     },
     
@@ -338,7 +338,7 @@ FOOD_MENU = [
         "category": "Paket",
         "image": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=500&h=350&fit=crop",
         "description": "Paket nasi goreng cabe ijo dengan teh",
-        "popular": True
+        "popular": True,
         "spicy_level": "pedas"
     },
     {
@@ -348,7 +348,7 @@ FOOD_MENU = [
         "category": "Paket",
         "image": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=500&h=350&fit=crop",
         "description": "Paket kwetiau ayam goreng dengan teh",
-        "popular": True
+        "popular": True,
         "spicy_level": "sedang"
     },
     {
@@ -358,7 +358,7 @@ FOOD_MENU = [
         "category": "Paket",
         "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=500&h=350&fit=crop",
         "description": "Paket nasi goreng spesial dengan lemon tea",
-        "popular": True
+        "popular": True,
         "spicy_level": "sedang"
     },
     {
@@ -368,7 +368,7 @@ FOOD_MENU = [
         "category": "Paket",
         "image": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=500&h=350&fit=crop",
         "description": "Paket kwetiau ayam goreng dengan thai tea",
-        "popular": True
+        "popular": True,
         "spicy_level": "sedang"
     },
     {
@@ -378,7 +378,7 @@ FOOD_MENU = [
         "category": "Paket",
         "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500&h=350&fit=crop",
         "description": "Paket 2 thai tea dengan kentang goreng",
-        "popular": True
+        "popular": True,
         "spicy_level": "sedang"
     },
     {
@@ -388,7 +388,7 @@ FOOD_MENU = [
         "category": "Paket",
         "image": "https://images.unsplash.com/photo-1534778101976-62847782c213?w=500&h=350&fit=crop",
         "description": "Paket 2 cappucino dengan mix OTP",
-        "popular": False
+        "popular": False,
         "spicy_level": "normal"
     },
     {
@@ -398,7 +398,7 @@ FOOD_MENU = [
         "category": "Paket",
         "image": "https://images.unsplash.com/photo-1617093727343-374698b1b08d?w=500&h=350&fit=crop",
         "description": "Paket nasi, capcay goreng seafood dengan blackcurant",
-        "popular": False
+        "popular": False,
         "spicy_level": "sedang"
     },
     {
@@ -408,7 +408,7 @@ FOOD_MENU = [
         "category": "Paket",
         "image": "https://images.unsplash.com/photo-1546069901-eacef0df6022?w=500&h=350&fit=crop",
         "description": "Paket nasi, sapo tahu seafood dengan lemonade",
-        "popular": False
+        "popular": False,
         "spicy_level": "sedang"
     },
     
@@ -420,7 +420,7 @@ FOOD_MENU = [
         "category": "Minuman",
         "image": "https://images.unsplash.com/photo-1597481499753-6e63aca6d3f3?w=500&h=350&fit=crop",
         "description": "Teh sederhana",
-        "popular": False
+        "popular": False,
         "spicy_level": "normal"
     },
     {
@@ -430,7 +430,7 @@ FOOD_MENU = [
         "category": "Minuman",
         "image": "https://images.unsplash.com/photo-1597481499753-6e63aca6d3f3?w=500&h=350&fit=crop",
         "description": "Teh manis segar",
-        "popular": True
+        "popular": True,
         "spicy_level": "normal"
     },
     {
@@ -440,7 +440,7 @@ FOOD_MENU = [
         "category": "Minuman",
         "image": "https://images.unsplash.com/photo-1523362628745-0c100150b504?w=500&h=350&fit=crop",
         "description": "Air mineral",
-        "popular": False
+        "popular": False,
         "spicy_level": "normal"
     },
     {
@@ -450,7 +450,7 @@ FOOD_MENU = [
         "category": "Minuman",
         "image": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=500&h=350&fit=crop",
         "description": "Kopi hitam",
-        "popular": False
+        "popular": False,
         "spicy_level": "normal"
     },
     {
@@ -460,7 +460,7 @@ FOOD_MENU = [
         "category": "Minuman",
         "image": "https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=500&h=350&fit=crop",
         "description": "Green tea segar",
-        "popular": False
+        "popular": False,
         "spicy_level": "normal"
     },
     {
@@ -470,7 +470,7 @@ FOOD_MENU = [
         "category": "Minuman",
         "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500&h=350&fit=crop",
         "description": "Thai tea original",
-        "popular": True
+        "popular": True,
         "spicy_level": "normal"
     },
     {
@@ -480,7 +480,7 @@ FOOD_MENU = [
         "category": "Minuman",
         "image": "https://images.unsplash.com/photo-1564890369478-c89ca6d9cde9?w=500&h=350&fit=crop",
         "description": "Green tea dengan susu",
-        "popular": False
+        "popular": False,
         "spicy_level": "normal"
     },
     {
@@ -490,7 +490,7 @@ FOOD_MENU = [
         "category": "Minuman",
         "image": "https://images.unsplash.com/photo-1517487881594-2787fef5ebf7?w=500&h=350&fit=crop",
         "description": "Milo hangat atau dingin",
-        "popular": True
+        "popular": True,
         "spicy_level": "normal"
     },
     {
@@ -500,7 +500,7 @@ FOOD_MENU = [
         "category": "Minuman",
         "image": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500&h=350&fit=crop",
         "description": "Thai tea campur milo",
-        "popular": False
+        "popular": False,
         "spicy_level": "normal"
     },
     {
@@ -510,7 +510,7 @@ FOOD_MENU = [
         "category": "Minuman",
         "image": "https://images.unsplash.com/photo-1534778101976-62847782c213?w=500&h=350&fit=crop",
         "description": "Cappucino dengan foam susu",
-        "popular": True
+        "popular": True,
         "spicy_level": "normal"
     },
     {
@@ -520,7 +520,7 @@ FOOD_MENU = [
         "category": "Minuman",
         "image": "https://images.unsplash.com/photo-1556881286-fc6915169721?w=500&h=350&fit=crop",
         "description": "Teh tarik dengan susu",
-        "popular": True
+        "popular": True,
         "spicy_level": "normal"
     },
     {
@@ -530,7 +530,7 @@ FOOD_MENU = [
         "category": "Minuman",
         "image": "https://images.unsplash.com/photo-1556881286-fc6915169721?w=500&h=350&fit=crop",
         "description": "Teh dengan lemon segar",
-        "popular": True
+        "popular": True,
         "spicy_level": "normal"
     },
     {
@@ -540,7 +540,7 @@ FOOD_MENU = [
         "category": "Minuman",
         "image": "https://images.unsplash.com/photo-1523677011781-c91d1bbe2f4d?w=500&h=350&fit=crop",
         "description": "Lemonade segar",
-        "popular": True
+        "popular": True,
         "spicy_level": "normal"
     },
     {
@@ -550,7 +550,7 @@ FOOD_MENU = [
         "category": "Minuman",
         "image": "https://images.unsplash.com/photo-1546548970-71785318a17b?w=500&h=350&fit=crop",
         "description": "Blackcurant segar",
-        "popular": False
+        "popular": False,
         "spicy_level": "normal"
     },
 ]

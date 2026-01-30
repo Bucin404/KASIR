@@ -23,9 +23,11 @@ def index():
     categories = [cat[0] for cat in categories]
     
     products = Product.query.filter_by(is_active=True).order_by(Product.category, Product.name).all()
+    # Convert Product objects to dictionaries for JSON serialization in template
+    products_dict = [p.to_dict() for p in products]
     
     return render_template('cashier/index.html', 
-        products=products,
+        products=products_dict,
         categories=categories
     )
 
