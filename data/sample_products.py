@@ -6,72 +6,80 @@ FOOD_MENU = [
         "name": "Nasi Goreng Mlarat",
         "price": 20000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=300&h=200&fit=crop&auto=format",
+        "image": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=500&h=350&fit=crop",
         "description": "Nasi goreng sederhana namun lezat",
-        "popular": False
+        "popular": False,
+        "spicy_level": "normal"  # pedas, sedang, normal
     },
     {
         "id": 121,
         "name": "Nasi Goreng Spesial",
         "price": 22000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=300&h=200&fit=crop&auto=format",
+        "image": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=500&h=350&fit=crop",
         "description": "Nasi goreng dengan bumbu spesial",
-        "popular": True
+        "popular": True,
+        "spicy_level": "sedang"
     },
     {
         "id": 131,
         "name": "Nasi Goreng Cabe Ijo",
         "price": 22000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=300&h=200&fit=crop&auto=format",
+        "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=500&h=350&fit=crop",
         "description": "Nasi goreng dengan cabe hijau pedas",
-        "popular": True
+        "popular": True,
+        "spicy_level": "pedas"
     },
     {
         "id": 141,
         "name": "Nasi Goreng Sosis",
         "price": 23000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1609501676725-7186f017a4b7?w=300&h=200&fit=crop&auto=format",
+        "image": "https://images.unsplash.com/photo-1516684732162-798a0062be99?w=500&h=350&fit=crop",
         "description": "Nasi goreng dengan sosis",
-        "popular": False
+        "popular": False,
+        "spicy_level": "normal"
     },
     {
         "id": 151,
         "name": "Nasi Goreng Modern Warno",
         "price": 24000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1596040033229-a0b3b6e75281?w=300&h=200&fit=crop&auto=format",
+        "image": "https://images.unsplash.com/photo-1596040033229-a0b3b6e75281?w=500&h=350&fit=crop",
         "description": "Nasi goreng modern dengan berbagai warna",
-        "popular": False
+        "popular": False,
+        "spicy_level": "sedang"
     },
     {
         "id": 161,
         "name": "Nasi Goreng Terimaskenthir",
         "price": 25000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=300&h=200&fit=crop&auto=format",
+        "image": "https://images.unsplash.com/photo-1617093727343-374698b1b08d?w=500&h=350&fit=crop",
         "description": "Nasi goreng dengan udang dan cumi",
-        "popular": True
+        "popular": True,
+        "spicy_level": "sedang"
     },
     {
         "id": 171,
         "name": "Nasi Goreng Pete",
         "price": 25000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=300&h=200&fit=crop&auto=format",
+        "image": "https://images.unsplash.com/photo-1505253716362-afaea1d3d1af?w=500&h=350&fit=crop",
         "description": "Nasi goreng dengan pete",
-        "popular": False
+        "popular": False,
+        "spicy_level": "pedas"
     },
     {
         "id": 181,
         "name": "Nasi Goreng Seafood",
         "price": 28000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=300&h=200&fit=crop&auto=format",
+        "image": "https://images.unsplash.com/photo-1516684732162-798a0062be99?w=500&h=350&fit=crop",
         "description": "Nasi goreng dengan seafood",
-        "popular": True
+        "popular": True,
+        "spicy_level": "sedang"
     },
     
     # === MIE ===
@@ -80,54 +88,60 @@ FOOD_MENU = [
         "name": "Mie Goreng Ayam",
         "price": 22000,
         "category": "Mie",
-        "image": "https://images.unsplash.com/photo-1585032226651-759b368d7246?w=300&h=200&fit=crop&auto=format",
+        "image": "https://images.unsplash.com/photo-1585032226651-759b368d7246?w=500&h=350&fit=crop",
         "description": "Mie goreng dengan ayam",
-        "popular": True
+        "popular": True,
+        "spicy_level": "normal"
     },
     {
         "id": 222,
         "name": "Mie Siram Ayam",
         "price": 22000,
         "category": "Mie",
-        "image": "https://images.unsplash.com/photo-1612874742237-6526221588e3?w=300&h=200&fit=crop&auto=format",
+        "image": "https://images.unsplash.com/photo-1612874742237-6526221588e3?w=500&h=350&fit=crop",
         "description": "Mie siram dengan ayam",
-        "popular": False
+        "popular": False,
+        "spicy_level": "normal"
     },
     {
         "id": 232,
         "name": "Mie Goreng Seafood",
         "price": 28000,
         "category": "Mie",
-        "image": "https://images.unsplash.com/photo-1617093727343-374698b1b08d?w=300&h=200&fit=crop&auto=format",
+        "image": "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=500&h=350&fit=crop",
         "description": "Mie goreng dengan seafood",
-        "popular": True
+        "popular": True,
+        "spicy_level": "sedang"
     },
     {
         "id": 242,
         "name": "Mie Siram Seafood",
         "price": 28000,
         "category": "Mie",
-        "image": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=300&h=200&fit=crop&auto=format",
+        "image": "https://images.unsplash.com/photo-1617093727343-374698b1b08d?w=500&h=350&fit=crop",
         "description": "Mie siram dengan seafood",
-        "popular": False
+        "popular": False,
+        "spicy_level": "sedang"
     },
     {
         "id": 252,
         "name": "Mie Goreng Sapi",
         "price": 30000,
         "category": "Mie",
-        "image": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=300&h=200&fit=crop&auto=format",
+        "image": "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=500&h=350&fit=crop",
         "description": "Mie goreng dengan sapi",
-        "popular": False
+        "popular": False,
+        "spicy_level": "normal"
     },
     {
         "id": 262,
         "name": "Mie Siram Sapi",
         "price": 30000,
         "category": "Mie",
-        "image": "https://images.unsplash.com/photo-1585032226651-759b368d7246?w=300&h=200&fit=crop&auto=format",
+        "image": "https://images.unsplash.com/photo-1558030006-450675393462?w=500&h=350&fit=crop",
         "description": "Mie siram dengan sapi",
-        "popular": False
+        "popular": False,
+        "spicy_level": "normal"
     },
     
     # === SNACK ===
