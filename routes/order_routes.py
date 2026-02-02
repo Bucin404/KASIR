@@ -334,16 +334,15 @@ def update_order_status(order_id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @order_bp.route('/qr-generate')
-@cashier_required
 def generate_qr():
-    """Generate QR code for table ordering"""
+    """Generate QR code for table ordering - PUBLIC (no login required)"""
     table_number = request.args.get('table', '1')
     
     # Generate QR code URL
     base_url = request.host_url.rstrip('/')
     qr_url = f"{base_url}/order/menu?table={table_number}"
     
-    return render_template('order/qr_generate.html', 
+    return render_template('orders/qr_modern.html', 
         qr_url=qr_url,
         table_number=table_number
     )
