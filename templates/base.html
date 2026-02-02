@@ -235,6 +235,7 @@
             font-weight: 500;
             font-size: 0.9rem;
             white-space: nowrap;
+            overflow: hidden;
         }
         
         .menu-item i {
@@ -248,12 +249,16 @@
         .menu-item-text {
             margin-left: 16px;
             opacity: 0;
-            transition: opacity 0.3s ease 0.1s;
+            width: 0;
+            transition: opacity 0.3s ease 0.1s, width 0s ease 0.3s;
             overflow: hidden;
+            white-space: nowrap;
         }
         
         .sidebar:hover .menu-item-text {
             opacity: 1;
+            width: auto;
+            transition: opacity 0.3s ease 0.1s, width 0s ease 0s;
         }
         
         .menu-item::before {
