@@ -347,6 +347,51 @@ def generate_qr():
         table_number=table_number
     )
 
+@order_bp.route('/generate-qr/<int:table_number>')
+def generate_qr_api(table_number):
+    """API endpoint to generate QR code image - PUBLIC"""
+    import qrcode
+    import io
+    import base64
+    
+    try:
+        # Generate QR code URL
+        base_url = request.host_url.rstrip('/')
+        menu_url = f"{base_url}/order/menu?table={table_number}"
+        
+        # Generate QR code
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(menu_url)
+        qr.make(fit=True)
+        
+        # Create image
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Convert to base64
+        buffer = io.BytesIO()
+        img.save(buffer, format='PNG')
+        buffer.seek(0)
+        img_base64 = base64.b64encode(buffer.getvalue()).decode()
+        qr_data_url = f"data:image/png;base64,{img_base64}"
+        
+        return jsonify({
+            'success': True,
+            'qr_url': qr_data_url,
+            'table_number': table_number,
+            'menu_url': menu_url
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
 @order_bp.route('/api/orders')
 @cashier_required
 def api_orders():
