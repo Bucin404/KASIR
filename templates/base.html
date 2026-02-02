@@ -225,23 +225,18 @@
         .menu-item {
             display: flex;
             align-items: center;
-            padding: 14px 20px;
+            padding: 10px 16px;
             color: var(--text-secondary);
             text-decoration: none;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
-            margin: 4px 8px;
+            margin: 3px 8px;
             border-radius: 12px;
             font-weight: 500;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             white-space: nowrap;
             overflow: hidden;
-        }
-        
-        .menu-item a {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            flex-wrap: nowrap;
         }
         
         .menu-item i {
@@ -253,18 +248,19 @@
         }
         
         .menu-item-text {
-            margin-left: 16px;
+            margin-left: 12px;
             opacity: 0;
-            width: 0;
-            transition: opacity 0.3s ease 0.1s, width 0.3s ease;
+            max-width: 0;
+            transition: opacity 0.3s ease 0.1s, max-width 0.3s ease;
             overflow: hidden;
             white-space: nowrap;
+            flex-shrink: 0;
         }
         
         .sidebar:hover .menu-item-text {
             opacity: 1;
-            width: auto;
-            transition: opacity 0.3s ease 0.1s;
+            max-width: 200px;
+            transition: opacity 0.3s ease 0.1s, max-width 0.3s ease;
         }
         
         .menu-item::before {

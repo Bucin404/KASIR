@@ -480,10 +480,14 @@
     
     .cart-items {
         flex: 1;
-        overflow-y: auto;
+        overflow-y: auto !important;
+        overflow-x: hidden;
         padding: var(--spacing-lg);
         min-height: 200px;
         max-height: calc(100vh - 450px);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
     }
     
     .cart-items::-webkit-scrollbar {
