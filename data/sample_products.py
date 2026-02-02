@@ -6,7 +6,7 @@ FOOD_MENU = [
         "name": "Nasi Goreng Mlarat",
         "price": 20000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=500&h=350&fit=crop&q=80",
+        "image": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=600&h=400&fit=crop&q=90&auto=format",
         "description": "Nasi goreng sederhana namun lezat",
         "popular": False,
         "spicy_level": "normal"  # pedas, sedang, normal
@@ -16,7 +16,7 @@ FOOD_MENU = [
         "name": "Nasi Goreng Spesial",
         "price": 22000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=500&h=350&fit=crop&q=80",
+        "image": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=600&h=400&fit=crop&q=90&auto=format",
         "description": "Nasi goreng dengan bumbu spesial",
         "popular": True,
         "spicy_level": "sedang"
@@ -26,7 +26,7 @@ FOOD_MENU = [
         "name": "Nasi Goreng Cabe Ijo",
         "price": 22000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1637806930600-37fa8892069d?w=500&h=350&fit=crop&q=80",
+        "image": "https://images.unsplash.com/photo-1596560548464-f010549b84d7?w=600&h=400&fit=crop&q=90&auto=format",
         "description": "Nasi goreng dengan cabe hijau pedas",
         "popular": True,
         "spicy_level": "pedas"
@@ -36,7 +36,7 @@ FOOD_MENU = [
         "name": "Nasi Goreng Sosis",
         "price": 23000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=500&h=350&fit=crop&q=80",
+        "image": "https://images.unsplash.com/photo-1679083216051-aa510a1a2c0e?w=600&h=400&fit=crop&q=90&auto=format",
         "description": "Nasi goreng dengan sosis",
         "popular": False,
         "spicy_level": "normal"
@@ -46,7 +46,7 @@ FOOD_MENU = [
         "name": "Nasi Goreng Modern Warno",
         "price": 24000,
         "category": "Nasi Goreng",
-        "image": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=500&h=350&fit=crop&q=80",
+        "image": "https://images.unsplash.com/photo-1645177628172-a94c1f96e6db?w=600&h=400&fit=crop&q=90&auto=format",
         "description": "Nasi goreng modern dengan berbagai warna",
         "popular": False,
         "spicy_level": "sedang"
