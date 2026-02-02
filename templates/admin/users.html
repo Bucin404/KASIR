@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block title %}Manajemen Pengguna - Kasir Modern{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 glass-dark fixed h-full z-40">
+        <div class="p-6">
+            <div class="flex items-center space-x-3 mb-8">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
+                    <i class="fas fa-cash-register text-white"></i>
+                </div>
+                <span class="text-xl font-display font-bold gradient-text">KASIR</span>
+            </div>
+            
+            <nav class="space-y-2">
+                <a href="{{ url_for('dashboard') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white">
+                    <i class="fas fa-home w-5"></i><span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('pos') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white">
+                    <i class="fas fa-cash-register w-5"></i><span>Kasir / POS</span>
+                </a>
+                <a href="{{ url_for('admin_users') }}" class="sidebar-link active flex items-center space-x-3 px-4 py-3 rounded-xl text-white">
+                    <i class="fas fa-users-cog w-5"></i><span>Pengguna</span>
+                </a>
+                <a href="{{ url_for('admin_menu') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white">
+                    <i class="fas fa-utensils w-5"></i><span>Menu</span>
+                </a>
+                <a href="{{ url_for('admin_tables') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white">
+                    <i class="fas fa-chair w-5"></i><span>Meja & QR</span>
+                </a>
+                <a href="{{ url_for('reports') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white">
+                    <i class="fas fa-chart-bar w-5"></i><span>Laporan</span>
+                </a>
+                <div class="pt-4 mt-4 border-t border-white/10">
+                    <a href="{{ url_for('logout') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-red-400 hover:text-red-300">
+                        <i class="fas fa-sign-out-alt w-5"></i><span>Logout</span>
+                    </a>
+                </div>
+            </nav>
+        </div>
+    </aside>
+    
+    <main class="flex-1 ml-64 p-8">
+        <header class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-2xl font-display font-bold">Manajemen Pengguna</h1>
+                <p class="text-gray-400">Kelola pengguna dan hak akses</p>
+            </div>
+            <button onclick="document.getElementById('add-user-modal').classList.remove('hidden')" 
+                    class="btn-primary px-4 py-2 rounded-xl font-medium flex items-center">
+                <i class="fas fa-plus mr-2"></i>Tambah User
+            </button>
+        </header>
+        
+        <!-- Users Table -->
+        <div class="glass-card rounded-2xl overflow-hidden">
+            <table class="w-full">
+                <thead class="bg-white/5">
+                    <tr>
+                        <th class="text-left p-4 text-sm font-medium text-gray-400">User</th>
+                        <th class="text-left p-4 text-sm font-medium text-gray-400">Email</th>
+                        <th class="text-left p-4 text-sm font-medium text-gray-400">Role</th>
+                        <th class="text-left p-4 text-sm font-medium text-gray-400">Status</th>
+                        <th class="text-left p-4 text-sm font-medium text-gray-400">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    {% for user in users %}
+                    <tr class="hover:bg-white/5">
+                        <td class="p-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 rounded-full bg-primary-500/20 flex items-center justify-center">
+                                    <i class="fas fa-user text-primary-400"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium">{{ user.full_name or user.username }}</p>
+                                    <p class="text-sm text-gray-400">@{{ user.username }}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="p-4 text-gray-300">{{ user.email }}</td>
+                        <td class="p-4">
+                            {% for role in user.roles %}
+                            <span class="px-2 py-1 rounded-full bg-primary-500/20 text-primary-400 text-xs font-medium mr-1">
+                                {{ role.name|title }}
+                            </span>
+                            {% endfor %}
+                        </td>
+                        <td class="p-4">
+                            <span class="px-3 py-1 rounded-full text-xs font-medium
+                                {% if user.is_active %}bg-green-500/20 text-green-400{% else %}bg-red-500/20 text-red-400{% endif %}">
+                                {{ 'Aktif' if user.is_active else 'Nonaktif' }}
+                            </span>
+                        </td>
+                        <td class="p-4">
+                            <form action="{{ url_for('admin_toggle_user', user_id=user.id) }}" method="POST" class="inline">
+                                <button type="submit" class="p-2 rounded-lg {% if user.is_active %}bg-red-500/20 hover:bg-red-500/30 text-red-400{% else %}bg-green-500/20 hover:bg-green-500/30 text-green-400{% endif %}">
+                                    <i class="fas {% if user.is_active %}fa-ban{% else %}fa-check{% endif %}"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+</div>
+
+<!-- Add User Modal -->
+<div id="add-user-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center flex">
+    <div class="glass-card rounded-2xl p-6 w-full max-w-md">
+        <h3 class="text-lg font-semibold mb-4">Tambah Pengguna Baru</h3>
+        <form action="{{ url_for('admin_create_user') }}" method="POST" class="space-y-4">
+            <div>
+                <label class="text-sm text-gray-400 mb-1 block">Nama Lengkap</label>
+                <input type="text" name="full_name" required class="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 px-4 text-white">
+            </div>
+            <div>
+                <label class="text-sm text-gray-400 mb-1 block">Username</label>
+                <input type="text" name="username" required class="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 px-4 text-white">
+            </div>
+            <div>
+                <label class="text-sm text-gray-400 mb-1 block">Email</label>
+                <input type="email" name="email" required class="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 px-4 text-white">
+            </div>
+            <div>
+                <label class="text-sm text-gray-400 mb-1 block">Password</label>
+                <input type="password" name="password" required minlength="6" class="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 px-4 text-white">
+            </div>
+            <div>
+                <label class="text-sm text-gray-400 mb-1 block">Role</label>
+                <select name="role_id" required class="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 px-4 text-white">
+                    {% for role in roles %}
+                    <option value="{{ role.id }}">{{ role.name|title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex space-x-3 pt-2">
+                <button type="button" onclick="document.getElementById('add-user-modal').classList.add('hidden')" 
+                        class="flex-1 py-2.5 rounded-xl bg-white/10 text-gray-300">Batal</button>
+                <button type="submit" class="flex-1 py-2.5 rounded-xl btn-primary text-white">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

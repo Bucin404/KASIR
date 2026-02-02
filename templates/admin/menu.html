@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Manajemen Menu - Kasir Modern{% endblock %}
+
+{% block body %}
+<div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside class="w-64 glass-dark fixed h-full z-40">
+        <div class="p-6">
+            <div class="flex items-center space-x-3 mb-8">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
+                    <i class="fas fa-cash-register text-white"></i>
+                </div>
+                <span class="text-xl font-display font-bold gradient-text">KASIR</span>
+            </div>
+            <nav class="space-y-2">
+                <a href="{{ url_for('dashboard') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white">
+                    <i class="fas fa-home w-5"></i><span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('admin_menu') }}" class="sidebar-link active flex items-center space-x-3 px-4 py-3 rounded-xl text-white">
+                    <i class="fas fa-utensils w-5"></i><span>Menu</span>
+                </a>
+                <a href="{{ url_for('admin_tables') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white">
+                    <i class="fas fa-chair w-5"></i><span>Meja & QR</span>
+                </a>
+                <div class="pt-4 mt-4 border-t border-white/10">
+                    <a href="{{ url_for('logout') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-red-400 hover:text-red-300">
+                        <i class="fas fa-sign-out-alt w-5"></i><span>Logout</span>
+                    </a>
+                </div>
+            </nav>
+        </div>
+    </aside>
+    
+    <main class="flex-1 ml-64 p-8">
+        <header class="flex items-center justify-between mb-8">
+            <div>
+                <h1 class="text-2xl font-display font-bold">Manajemen Menu</h1>
+                <p class="text-gray-400">Kelola daftar menu restoran</p>
+            </div>
+            <button onclick="document.getElementById('add-menu-modal').classList.remove('hidden')" 
+                    class="btn-primary px-4 py-2 rounded-xl font-medium flex items-center">
+                <i class="fas fa-plus mr-2"></i>Tambah Menu
+            </button>
+        </header>
+        
+        <!-- Stats -->
+        <div class="grid grid-cols-4 gap-4 mb-6">
+            <div class="glass-card rounded-xl p-4">
+                <p class="text-gray-400 text-sm">Total Menu</p>
+                <p class="text-2xl font-bold">{{ menu_items|length }}</p>
+            </div>
+            <div class="glass-card rounded-xl p-4">
+                <p class="text-gray-400 text-sm">Kategori</p>
+                <p class="text-2xl font-bold">{{ categories|length }}</p>
+            </div>
+            <div class="glass-card rounded-xl p-4">
+                <p class="text-gray-400 text-sm">Menu Populer</p>
+                <p class="text-2xl font-bold">{{ menu_items|selectattr('is_popular')|list|length }}</p>
+            </div>
+            <div class="glass-card rounded-xl p-4">
+                <p class="text-gray-400 text-sm">Tersedia</p>
+                <p class="text-2xl font-bold">{{ menu_items|selectattr('is_available')|list|length }}</p>
+            </div>
+        </div>
+        
+        <!-- Menu Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {% for item in menu_items %}
+            <div class="glass-card rounded-2xl overflow-hidden">
+                <div class="relative">
+                    <img src="{{ item.image }}" alt="{{ item.name }}" class="w-full h-28 object-cover">
+                    {% if item.is_popular %}
+                    <span class="absolute top-2 left-2 px-2 py-0.5 bg-yellow-500 text-yellow-900 text-xs font-bold rounded-full">Popular</span>
+                    {% endif %}
+                    {% if not item.is_available %}
+                    <div class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <span class="text-red-400 font-bold">Tidak Tersedia</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="p-3">
+                    <p class="text-xs text-gray-500">{{ item.code }}</p>
+                    <h3 class="font-medium text-sm line-clamp-2 h-10">{{ item.name }}</h3>
+                    <p class="text-primary-400 font-bold">{{ item.price|format_currency }}</p>
+                    <p class="text-xs text-gray-500">{{ item.category.name if item.category else '-' }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+</div>
+
+<!-- Add Menu Modal -->
+<div id="add-menu-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center flex">
+    <div class="glass-card rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <h3 class="text-lg font-semibold mb-4">Tambah Menu Baru</h3>
+        <form action="{{ url_for('admin_create_menu') }}" method="POST" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-sm text-gray-400 mb-1 block">Kode Menu</label>
+                    <input type="text" name="code" class="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 px-4 text-white">
+                </div>
+                <div>
+                    <label class="text-sm text-gray-400 mb-1 block">Harga</label>
+                    <input type="number" name="price" required class="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 px-4 text-white">
+                </div>
+            </div>
+            <div>
+                <label class="text-sm text-gray-400 mb-1 block">Nama Menu</label>
+                <input type="text" name="name" required class="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 px-4 text-white">
+            </div>
+            <div>
+                <label class="text-sm text-gray-400 mb-1 block">Deskripsi</label>
+                <textarea name="description" rows="2" class="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 px-4 text-white"></textarea>
+            </div>
+            <div>
+                <label class="text-sm text-gray-400 mb-1 block">Kategori</label>
+                <select name="category_id" required class="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 px-4 text-white">
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}">{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="text-sm text-gray-400 mb-1 block">URL Gambar</label>
+                <input type="url" name="image" class="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 px-4 text-white" placeholder="https://...">
+            </div>
+            <div class="flex flex-wrap gap-4">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" name="is_popular" class="w-4 h-4 rounded bg-white/5 text-primary-500">
+                    <span class="text-sm text-gray-300">Menu Populer</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" name="has_spicy_option" class="w-4 h-4 rounded bg-white/5 text-primary-500">
+                    <span class="text-sm text-gray-300">Pilihan Pedas</span>
+                </label>
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" name="has_temperature_option" class="w-4 h-4 rounded bg-white/5 text-primary-500">
+                    <span class="text-sm text-gray-300">Panas/Dingin</span>
+                </label>
+            </div>
+            <div class="flex space-x-3 pt-2">
+                <button type="button" onclick="document.getElementById('add-menu-modal').classList.add('hidden')" 
+                        class="flex-1 py-2.5 rounded-xl bg-white/10 text-gray-300">Batal</button>
+                <button type="submit" class="flex-1 py-2.5 rounded-xl btn-primary text-white">Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,620 @@
+{% extends "base.html" %}
+
+{% block title %}Kasir / POS - Kasir Modern{% endblock %}
+
+{% block body %}
+<div class="flex h-screen overflow-hidden">
+    <!-- Menu Section (Left) -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+        <!-- Header -->
+        <header class="glass-dark p-4 flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <a href="{{ url_for('dashboard') }}" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
+                        <i class="fas fa-cash-register text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-display font-bold">Point of Sale</h1>
+                        <p class="text-gray-400 text-xs">{{ now.strftime('%d %B %Y') }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Search -->
+            <div class="flex-1 max-w-md mx-8">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" id="search-menu" placeholder="Cari menu..." 
+                           class="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-12 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50">
+                </div>
+            </div>
+            
+            <!-- User Info -->
+            <div class="flex items-center space-x-3">
+                <span class="text-sm text-gray-400">{{ current_user.full_name or current_user.username }}</span>
+                <div class="w-8 h-8 rounded-full bg-primary-500/20 flex items-center justify-center">
+                    <i class="fas fa-user text-primary-400 text-sm"></i>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Categories -->
+        <div class="glass p-4 flex items-center space-x-3 overflow-x-auto">
+            <button onclick="filterCategory('all')" class="category-btn active px-4 py-2 rounded-xl bg-primary-500/20 text-primary-400 font-medium whitespace-nowrap transition hover:bg-primary-500/30" data-category="all">
+                <i class="fas fa-th-large mr-2"></i>Semua
+            </button>
+            {% for category in categories %}
+            <button onclick="filterCategory({{ category.id }})" class="category-btn px-4 py-2 rounded-xl bg-white/5 text-gray-400 font-medium whitespace-nowrap transition hover:bg-white/10" data-category="{{ category.id }}">
+                <i class="{{ category.icon or 'fas fa-utensils' }} mr-2"></i>{{ category.name }}
+            </button>
+            {% endfor %}
+        </div>
+        
+        <!-- Menu Grid -->
+        <div class="flex-1 overflow-y-auto p-4">
+            <div id="menu-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {% for item in menu_items %}
+                <div class="menu-item menu-card glass-card rounded-2xl overflow-hidden cursor-pointer" 
+                     data-id="{{ item.id }}"
+                     data-name="{{ item.name }}"
+                     data-price="{{ item.price }}"
+                     data-category="{{ item.category_id }}"
+                     data-spicy="{{ item.has_spicy_option|lower }}"
+                     data-temp="{{ item.has_temperature_option|lower }}"
+                     onclick="addToCart({{ item.id }}, '{{ item.name }}', {{ item.price }}, {{ item.has_spicy_option|lower }}, {{ item.has_temperature_option|lower }})">
+                    <div class="relative">
+                        <img src="{{ item.image }}" alt="{{ item.name }}" class="w-full h-28 object-cover">
+                        {% if item.is_popular %}
+                        <span class="absolute top-2 left-2 px-2 py-0.5 bg-yellow-500 text-yellow-900 text-xs font-bold rounded-full">
+                            <i class="fas fa-fire mr-1"></i>Popular
+                        </span>
+                        {% endif %}
+                        {% if item.has_spicy_option %}
+                        <span class="absolute top-2 right-2 w-6 h-6 bg-red-500/80 rounded-full flex items-center justify-center">
+                            <i class="fas fa-pepper-hot text-white text-xs"></i>
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="p-3">
+                        <h3 class="font-medium text-sm line-clamp-2 h-10">{{ item.name }}</h3>
+                        <p class="text-primary-400 font-bold mt-1">{{ item.price|format_currency }}</p>
+                        {% if item.code %}
+                        <p class="text-gray-500 text-xs">Kode: {{ item.code }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Cart Section (Right) -->
+    <div class="w-96 glass-dark flex flex-col">
+        <!-- Cart Header -->
+        <div class="p-4 border-b border-white/10">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold">Keranjang</h2>
+                <button onclick="clearCart()" class="text-red-400 hover:text-red-300 text-sm">
+                    <i class="fas fa-trash mr-1"></i>Hapus Semua
+                </button>
+            </div>
+            
+            <!-- Table & Order Type Selection -->
+            <div class="grid grid-cols-2 gap-3 mt-4">
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Tipe Pesanan</label>
+                    <select id="order-type" class="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/50">
+                        <option value="dine_in">Dine In</option>
+                        <option value="takeaway">Take Away</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Nomor Meja</label>
+                    <select id="table-select" class="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/50">
+                        <option value="">Pilih Meja</option>
+                        {% for table in tables %}
+                        <option value="{{ table.id }}" {% if table.status == 'occupied' %}disabled{% endif %}>
+                            Meja {{ table.number }} {% if table.status == 'occupied' %}(Terisi){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <label class="text-xs text-gray-400 mb-1 block">Nama Pelanggan</label>
+                <input type="text" id="customer-name" placeholder="Optional" 
+                       class="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50">
+            </div>
+        </div>
+        
+        <!-- Cart Items -->
+        <div id="cart-items" class="flex-1 overflow-y-auto p-4 space-y-3">
+            <div id="empty-cart" class="text-center py-12 text-gray-500">
+                <i class="fas fa-shopping-cart text-4xl mb-3"></i>
+                <p>Keranjang kosong</p>
+                <p class="text-sm">Klik menu untuk menambahkan</p>
+            </div>
+        </div>
+        
+        <!-- Cart Summary -->
+        <div class="p-4 border-t border-white/10 space-y-3">
+            <div class="flex justify-between text-sm">
+                <span class="text-gray-400">Subtotal</span>
+                <span id="subtotal">Rp 0</span>
+            </div>
+            <div class="flex justify-between text-sm">
+                <span class="text-gray-400">Pajak (10%)</span>
+                <span id="tax">Rp 0</span>
+            </div>
+            <div class="flex justify-between text-lg font-bold pt-3 border-t border-white/10">
+                <span>Total</span>
+                <span id="total" class="text-primary-400">Rp 0</span>
+            </div>
+            
+            <!-- Payment Section -->
+            <div class="pt-3 border-t border-white/10">
+                <label class="text-xs text-gray-400 mb-1 block">Metode Pembayaran</label>
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <button onclick="setPaymentMethod('cash')" class="payment-method-btn active px-3 py-2 rounded-lg bg-primary-500/20 text-primary-400 text-sm font-medium border border-primary-500/30" data-method="cash">
+                        <i class="fas fa-money-bill mr-2"></i>Cash
+                    </button>
+                    <button onclick="setPaymentMethod('midtrans')" class="payment-method-btn px-3 py-2 rounded-lg bg-white/5 text-gray-400 text-sm font-medium border border-white/10" data-method="midtrans">
+                        <i class="fas fa-credit-card mr-2"></i>Online
+                    </button>
+                </div>
+                
+                <div id="cash-payment" class="space-y-2">
+                    <label class="text-xs text-gray-400">Jumlah Bayar</label>
+                    <input type="number" id="paid-amount" placeholder="Masukkan jumlah" 
+                           class="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+                           oninput="calculateChange()">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400">Kembalian</span>
+                        <span id="change" class="text-green-400">Rp 0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Cash Buttons -->
+            <div class="grid grid-cols-4 gap-2">
+                <button onclick="setQuickCash(50000)" class="py-2 rounded-lg bg-white/5 text-gray-300 text-xs hover:bg-white/10">50rb</button>
+                <button onclick="setQuickCash(100000)" class="py-2 rounded-lg bg-white/5 text-gray-300 text-xs hover:bg-white/10">100rb</button>
+                <button onclick="setQuickCash(150000)" class="py-2 rounded-lg bg-white/5 text-gray-300 text-xs hover:bg-white/10">150rb</button>
+                <button onclick="setQuickCash(200000)" class="py-2 rounded-lg bg-white/5 text-gray-300 text-xs hover:bg-white/10">200rb</button>
+            </div>
+            
+            <!-- Checkout Button -->
+            <button onclick="processCheckout()" id="checkout-btn" disabled
+                    class="w-full btn-success py-3 rounded-xl font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2">
+                <i class="fas fa-check-circle"></i>
+                <span>Proses Pembayaran</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Options Modal (Spice Level & Temperature) -->
+<div id="options-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center">
+    <div class="glass-card rounded-2xl p-6 w-full max-w-md animate-fade-in">
+        <h3 class="text-lg font-semibold mb-4" id="modal-item-name">Opsi Pesanan</h3>
+        
+        <div id="spice-options" class="mb-4 hidden">
+            <label class="text-sm text-gray-400 mb-2 block">Tingkat Kepedasan</label>
+            <div class="grid grid-cols-5 gap-2">
+                <button onclick="selectSpice('none')" class="spice-btn py-2 rounded-lg bg-white/5 text-gray-300 text-xs hover:bg-white/10 border border-transparent" data-level="none">
+                    Tidak Pedas
+                </button>
+                <button onclick="selectSpice('mild')" class="spice-btn py-2 rounded-lg bg-white/5 text-gray-300 text-xs hover:bg-white/10 border border-transparent" data-level="mild">
+                    Sedikit
+                </button>
+                <button onclick="selectSpice('medium')" class="spice-btn py-2 rounded-lg bg-white/5 text-gray-300 text-xs hover:bg-white/10 border border-transparent" data-level="medium">
+                    Sedang
+                </button>
+                <button onclick="selectSpice('hot')" class="spice-btn py-2 rounded-lg bg-white/5 text-gray-300 text-xs hover:bg-white/10 border border-transparent" data-level="hot">
+                    Pedas
+                </button>
+                <button onclick="selectSpice('extra_hot')" class="spice-btn py-2 rounded-lg bg-white/5 text-gray-300 text-xs hover:bg-white/10 border border-transparent" data-level="extra_hot">
+                    Extra Pedas
+                </button>
+            </div>
+        </div>
+        
+        <div id="temp-options" class="mb-4 hidden">
+            <label class="text-sm text-gray-400 mb-2 block">Suhu Minuman</label>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="selectTemp('hot')" class="temp-btn py-3 rounded-lg bg-white/5 text-gray-300 text-sm hover:bg-white/10 border border-transparent" data-temp="hot">
+                    <i class="fas fa-mug-hot text-orange-400 mr-2"></i>Panas
+                </button>
+                <button onclick="selectTemp('cold')" class="temp-btn py-3 rounded-lg bg-white/5 text-gray-300 text-sm hover:bg-white/10 border border-transparent" data-temp="cold">
+                    <i class="fas fa-snowflake text-blue-400 mr-2"></i>Dingin
+                </button>
+                <button onclick="selectTemp('normal')" class="temp-btn py-3 rounded-lg bg-white/5 text-gray-300 text-sm hover:bg-white/10 border border-transparent" data-temp="normal">
+                    <i class="fas fa-glass-water text-gray-400 mr-2"></i>Normal
+                </button>
+            </div>
+        </div>
+        
+        <div class="mb-4">
+            <label class="text-sm text-gray-400 mb-2 block">Catatan</label>
+            <input type="text" id="item-notes" placeholder="Catatan tambahan..." 
+                   class="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50">
+        </div>
+        
+        <div class="flex space-x-3">
+            <button onclick="closeOptionsModal()" class="flex-1 py-2.5 rounded-xl bg-white/10 text-gray-300 font-medium hover:bg-white/20">
+                Batal
+            </button>
+            <button onclick="confirmAddToCart()" class="flex-1 py-2.5 rounded-xl btn-primary text-white font-medium">
+                Tambahkan
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Receipt Modal -->
+<div id="receipt-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center">
+    <div class="glass-card rounded-2xl p-6 w-full max-w-md animate-fade-in">
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-check text-green-400 text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold">Pembayaran Berhasil!</h3>
+        </div>
+        
+        <div id="receipt-content" class="bg-white/5 rounded-xl p-4 mb-4 text-sm">
+            <!-- Receipt will be populated here -->
+        </div>
+        
+        <div class="flex space-x-3">
+            <button onclick="printReceipt()" class="flex-1 py-2.5 rounded-xl bg-white/10 text-gray-300 font-medium hover:bg-white/20">
+                <i class="fas fa-print mr-2"></i>Cetak
+            </button>
+            <button onclick="newOrder()" class="flex-1 py-2.5 rounded-xl btn-primary text-white font-medium">
+                <i class="fas fa-plus mr-2"></i>Pesanan Baru
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Cart state
+let cart = [];
+let paymentMethod = 'cash';
+let currentItem = null;
+let selectedSpice = 'none';
+let selectedTemp = 'normal';
+
+// Format currency
+function formatCurrency(num) {
+    return 'Rp ' + new Intl.NumberFormat('id-ID').format(num);
+}
+
+// Filter menu by category
+function filterCategory(categoryId) {
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.classList.remove('active', 'bg-primary-500/20', 'text-primary-400');
+        btn.classList.add('bg-white/5', 'text-gray-400');
+    });
+    
+    const activeBtn = document.querySelector(`.category-btn[data-category="${categoryId}"]`);
+    activeBtn.classList.add('active', 'bg-primary-500/20', 'text-primary-400');
+    activeBtn.classList.remove('bg-white/5', 'text-gray-400');
+    
+    document.querySelectorAll('.menu-item').forEach(item => {
+        if (categoryId === 'all' || item.dataset.category == categoryId) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+// Search menu
+document.getElementById('search-menu').addEventListener('input', function(e) {
+    const query = e.target.value.toLowerCase();
+    document.querySelectorAll('.menu-item').forEach(item => {
+        const name = item.dataset.name.toLowerCase();
+        if (name.includes(query)) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+});
+
+// Add to cart
+function addToCart(id, name, price, hasSpicy, hasTemp) {
+    currentItem = { id, name, price, hasSpicy, hasTemp };
+    
+    if (hasSpicy || hasTemp) {
+        // Show options modal
+        document.getElementById('modal-item-name').textContent = name;
+        document.getElementById('spice-options').classList.toggle('hidden', !hasSpicy);
+        document.getElementById('temp-options').classList.toggle('hidden', !hasTemp);
+        document.getElementById('options-modal').classList.remove('hidden');
+        document.getElementById('options-modal').classList.add('flex');
+        
+        // Reset selections
+        selectedSpice = 'none';
+        selectedTemp = 'normal';
+        document.querySelectorAll('.spice-btn, .temp-btn').forEach(btn => {
+            btn.classList.remove('border-primary-500', 'bg-primary-500/20');
+            btn.classList.add('border-transparent');
+        });
+    } else {
+        addItemToCart(id, name, price, null, null, '');
+    }
+}
+
+function selectSpice(level) {
+    selectedSpice = level;
+    document.querySelectorAll('.spice-btn').forEach(btn => {
+        btn.classList.remove('border-primary-500', 'bg-primary-500/20');
+        btn.classList.add('border-transparent');
+    });
+    document.querySelector(`.spice-btn[data-level="${level}"]`).classList.add('border-primary-500', 'bg-primary-500/20');
+    document.querySelector(`.spice-btn[data-level="${level}"]`).classList.remove('border-transparent');
+}
+
+function selectTemp(temp) {
+    selectedTemp = temp;
+    document.querySelectorAll('.temp-btn').forEach(btn => {
+        btn.classList.remove('border-primary-500', 'bg-primary-500/20');
+        btn.classList.add('border-transparent');
+    });
+    document.querySelector(`.temp-btn[data-temp="${temp}"]`).classList.add('border-primary-500', 'bg-primary-500/20');
+    document.querySelector(`.temp-btn[data-temp="${temp}"]`).classList.remove('border-transparent');
+}
+
+function closeOptionsModal() {
+    document.getElementById('options-modal').classList.add('hidden');
+    document.getElementById('options-modal').classList.remove('flex');
+    document.getElementById('item-notes').value = '';
+}
+
+function confirmAddToCart() {
+    const notes = document.getElementById('item-notes').value;
+    addItemToCart(currentItem.id, currentItem.name, currentItem.price, 
+                  currentItem.hasSpicy ? selectedSpice : null, 
+                  currentItem.hasTemp ? selectedTemp : null, notes);
+    closeOptionsModal();
+}
+
+function addItemToCart(id, name, price, spiceLevel, temperature, notes) {
+    // Check if item exists with same options
+    const existingIndex = cart.findIndex(item => 
+        item.id === id && item.spice_level === spiceLevel && item.temperature === temperature && item.notes === notes
+    );
+    
+    if (existingIndex > -1) {
+        cart[existingIndex].quantity++;
+    } else {
+        cart.push({
+            id, 
+            menu_item_id: id,
+            name, 
+            price, 
+            quantity: 1,
+            spice_level: spiceLevel,
+            temperature: temperature,
+            notes: notes
+        });
+    }
+    
+    updateCartUI();
+}
+
+function updateCartUI() {
+    const cartContainer = document.getElementById('cart-items');
+    const emptyCart = document.getElementById('empty-cart');
+    
+    if (cart.length === 0) {
+        cartContainer.innerHTML = '';
+        cartContainer.appendChild(emptyCart);
+        emptyCart.classList.remove('hidden');
+    } else {
+        emptyCart.classList.add('hidden');
+        cartContainer.innerHTML = cart.map((item, index) => `
+            <div class="glass rounded-xl p-3">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <h4 class="font-medium text-sm">${item.name}</h4>
+                        <p class="text-primary-400 text-sm">${formatCurrency(item.price)}</p>
+                        ${item.spice_level ? `<span class="text-xs text-red-400"><i class="fas fa-pepper-hot mr-1"></i>${item.spice_level}</span>` : ''}
+                        ${item.temperature ? `<span class="text-xs text-blue-400 ml-2"><i class="fas fa-thermometer-half mr-1"></i>${item.temperature}</span>` : ''}
+                        ${item.notes ? `<p class="text-xs text-gray-500 mt-1">${item.notes}</p>` : ''}
+                    </div>
+                    <button onclick="removeFromCart(${index})" class="text-red-400 hover:text-red-300">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="flex items-center justify-between mt-2">
+                    <div class="flex items-center space-x-2">
+                        <button onclick="updateQuantity(${index}, -1)" class="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20">
+                            <i class="fas fa-minus text-xs"></i>
+                        </button>
+                        <span class="w-8 text-center font-medium">${item.quantity}</span>
+                        <button onclick="updateQuantity(${index}, 1)" class="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20">
+                            <i class="fas fa-plus text-xs"></i>
+                        </button>
+                    </div>
+                    <span class="font-semibold">${formatCurrency(item.price * item.quantity)}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    updateTotals();
+}
+
+function updateQuantity(index, delta) {
+    cart[index].quantity += delta;
+    if (cart[index].quantity <= 0) {
+        cart.splice(index, 1);
+    }
+    updateCartUI();
+}
+
+function removeFromCart(index) {
+    cart.splice(index, 1);
+    updateCartUI();
+}
+
+function clearCart() {
+    cart = [];
+    updateCartUI();
+}
+
+function updateTotals() {
+    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const tax = Math.round(subtotal * 0.10);
+    const total = subtotal + tax;
+    
+    document.getElementById('subtotal').textContent = formatCurrency(subtotal);
+    document.getElementById('tax').textContent = formatCurrency(tax);
+    document.getElementById('total').textContent = formatCurrency(total);
+    
+    document.getElementById('checkout-btn').disabled = cart.length === 0;
+    
+    calculateChange();
+}
+
+function setPaymentMethod(method) {
+    paymentMethod = method;
+    document.querySelectorAll('.payment-method-btn').forEach(btn => {
+        btn.classList.remove('active', 'bg-primary-500/20', 'text-primary-400', 'border-primary-500/30');
+        btn.classList.add('bg-white/5', 'text-gray-400', 'border-white/10');
+    });
+    document.querySelector(`.payment-method-btn[data-method="${method}"]`).classList.add('active', 'bg-primary-500/20', 'text-primary-400', 'border-primary-500/30');
+    document.querySelector(`.payment-method-btn[data-method="${method}"]`).classList.remove('bg-white/5', 'text-gray-400', 'border-white/10');
+    
+    document.getElementById('cash-payment').style.display = method === 'cash' ? 'block' : 'none';
+}
+
+function setQuickCash(amount) {
+    document.getElementById('paid-amount').value = amount;
+    calculateChange();
+}
+
+function calculateChange() {
+    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const total = subtotal + Math.round(subtotal * 0.10);
+    const paid = parseInt(document.getElementById('paid-amount').value) || 0;
+    const change = Math.max(0, paid - total);
+    
+    document.getElementById('change').textContent = formatCurrency(change);
+    document.getElementById('change').classList.toggle('text-red-400', paid < total && paid > 0);
+    document.getElementById('change').classList.toggle('text-green-400', paid >= total || paid === 0);
+}
+
+async function processCheckout() {
+    if (cart.length === 0) return;
+    
+    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const total = subtotal + Math.round(subtotal * 0.10);
+    const paid = parseInt(document.getElementById('paid-amount').value) || 0;
+    
+    if (paymentMethod === 'cash' && paid < total) {
+        alert('Jumlah bayar kurang!');
+        return;
+    }
+    
+    const orderData = {
+        items: cart,
+        table_id: document.getElementById('table-select').value || null,
+        order_type: document.getElementById('order-type').value,
+        customer_name: document.getElementById('customer-name').value,
+        payment_method: paymentMethod,
+        paid_amount: paid
+    };
+    
+    try {
+        const response = await fetch('/api/order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showReceipt(result.order);
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+function showReceipt(order) {
+    const receiptContent = document.getElementById('receipt-content');
+    receiptContent.innerHTML = `
+        <div class="text-center mb-4">
+            <h4 class="font-bold">KASIR MODERN</h4>
+            <p class="text-gray-400 text-xs">Jl. Rw. Belong, Jakarta Barat</p>
+        </div>
+        <div class="border-t border-dashed border-white/20 py-2">
+            <p class="text-xs text-gray-400">${order.order_number}</p>
+            <p class="text-xs text-gray-400">${new Date().toLocaleString('id-ID')}</p>
+            ${order.table ? `<p class="text-xs text-gray-400">Meja: ${order.table}</p>` : ''}
+        </div>
+        <div class="border-t border-dashed border-white/20 py-2 space-y-1">
+            ${order.items.map(item => `
+                <div class="flex justify-between text-xs">
+                    <span>${item.name} x${item.quantity}</span>
+                    <span>${formatCurrency(item.subtotal)}</span>
+                </div>
+            `).join('')}
+        </div>
+        <div class="border-t border-dashed border-white/20 py-2 space-y-1">
+            <div class="flex justify-between text-xs">
+                <span>Subtotal</span>
+                <span>${formatCurrency(order.subtotal)}</span>
+            </div>
+            <div class="flex justify-between text-xs">
+                <span>Pajak (10%)</span>
+                <span>${formatCurrency(order.tax)}</span>
+            </div>
+            <div class="flex justify-between font-bold">
+                <span>Total</span>
+                <span>${formatCurrency(order.total)}</span>
+            </div>
+            ${order.payment ? `
+            <div class="flex justify-between text-xs">
+                <span>Bayar</span>
+                <span>${formatCurrency(order.payment.paid_amount)}</span>
+            </div>
+            <div class="flex justify-between text-xs">
+                <span>Kembalian</span>
+                <span>${formatCurrency(order.payment.change_amount)}</span>
+            </div>
+            ` : ''}
+        </div>
+        <div class="text-center text-xs text-gray-400 pt-2 border-t border-dashed border-white/20">
+            Terima kasih!
+        </div>
+    `;
+    
+    document.getElementById('receipt-modal').classList.remove('hidden');
+    document.getElementById('receipt-modal').classList.add('flex');
+}
+
+function printReceipt() {
+    window.print();
+}
+
+function newOrder() {
+    document.getElementById('receipt-modal').classList.add('hidden');
+    document.getElementById('receipt-modal').classList.remove('flex');
+    clearCart();
+    document.getElementById('paid-amount').value = '';
+    document.getElementById('customer-name').value = '';
+    document.getElementById('table-select').value = '';
+}
+</script>
+{% endblock %}

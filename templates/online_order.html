@@ -1,0 +1,393 @@
+{% extends "base.html" %}
+
+{% block title %}Pesan Online - Meja {{ table.number }} - Kasir Modern{% endblock %}
+
+{% block body %}
+<div class="min-h-screen pb-32">
+    <!-- Header -->
+    <header class="glass-dark sticky top-0 z-40 p-4">
+        <div class="max-w-4xl mx-auto flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
+                    <i class="fas fa-utensils text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-display font-bold gradient-text">KASIR MODERN</h1>
+                    <p class="text-xs text-gray-400">Pesan dari meja Anda</p>
+                </div>
+            </div>
+            <div class="glass rounded-xl px-4 py-2 flex items-center space-x-2">
+                <i class="fas fa-chair text-primary-400"></i>
+                <span class="font-semibold">Meja {{ table.number }}</span>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Categories -->
+    <div class="sticky top-16 z-30 glass p-3">
+        <div class="max-w-4xl mx-auto flex space-x-2 overflow-x-auto pb-2">
+            <button onclick="filterCategory('all')" class="category-btn active shrink-0 px-4 py-2 rounded-full bg-primary-500 text-white text-sm font-medium" data-category="all">
+                Semua
+            </button>
+            {% for category in categories %}
+            <button onclick="filterCategory({{ category.id }})" class="category-btn shrink-0 px-4 py-2 rounded-full bg-white/10 text-gray-300 text-sm font-medium" data-category="{{ category.id }}">
+                {{ category.name }}
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Menu List -->
+    <div class="max-w-4xl mx-auto p-4">
+        <div id="menu-list" class="space-y-3">
+            {% for item in menu_items %}
+            <div class="menu-item glass-card rounded-2xl p-3 flex space-x-4" 
+                 data-id="{{ item.id }}"
+                 data-category="{{ item.category_id }}">
+                <img src="{{ item.image }}" alt="{{ item.name }}" class="w-24 h-24 rounded-xl object-cover shrink-0">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h3 class="font-medium">{{ item.name }}</h3>
+                            {% if item.is_popular %}
+                            <span class="inline-block px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-xs rounded-full mt-1">
+                                <i class="fas fa-fire mr-1"></i>Popular
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div class="text-right">
+                            <p class="text-primary-400 font-bold">{{ item.price|format_currency }}</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-sm mt-1 line-clamp-2">{{ item.description }}</p>
+                    <div class="flex items-center justify-between mt-2">
+                        <div class="flex items-center space-x-2">
+                            {% if item.has_spicy_option %}
+                            <span class="text-xs text-red-400"><i class="fas fa-pepper-hot"></i></span>
+                            {% endif %}
+                            {% if item.has_temperature_option %}
+                            <span class="text-xs text-blue-400"><i class="fas fa-snowflake"></i>/<i class="fas fa-mug-hot"></i></span>
+                            {% endif %}
+                        </div>
+                        <button onclick="addToCart({{ item.id }}, '{{ item.name }}', {{ item.price }}, {{ item.has_spicy_option|lower }}, {{ item.has_temperature_option|lower }})"
+                                class="px-4 py-1.5 rounded-full btn-primary text-white text-sm font-medium">
+                            <i class="fas fa-plus mr-1"></i>Tambah
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Floating Cart Button -->
+    <div id="cart-button" class="fixed bottom-4 left-4 right-4 z-50 hidden">
+        <button onclick="openCart()" class="w-full glass-card rounded-2xl p-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-xl bg-primary-500 flex items-center justify-center relative">
+                    <i class="fas fa-shopping-cart text-white"></i>
+                    <span id="cart-count" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full text-white text-xs flex items-center justify-center font-bold">0</span>
+                </div>
+                <div class="text-left">
+                    <p class="text-sm text-gray-400">Total Pesanan</p>
+                    <p id="cart-total" class="font-bold text-primary-400">Rp 0</p>
+                </div>
+            </div>
+            <div class="btn-success px-6 py-2 rounded-xl font-semibold">
+                Lihat Keranjang
+            </div>
+        </button>
+    </div>
+</div>
+
+<!-- Cart Modal -->
+<div id="cart-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden">
+    <div class="absolute bottom-0 left-0 right-0 glass-dark rounded-t-3xl max-h-[85vh] flex flex-col animate-fade-in">
+        <div class="p-4 border-b border-white/10 flex items-center justify-between">
+            <h2 class="text-lg font-semibold">Keranjang Anda</h2>
+            <button onclick="closeCart()" class="text-gray-400 hover:text-white">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        
+        <div id="cart-items" class="flex-1 overflow-y-auto p-4 space-y-3">
+            <!-- Cart items will be populated here -->
+        </div>
+        
+        <div class="p-4 border-t border-white/10 space-y-3">
+            <div class="flex justify-between text-sm">
+                <span class="text-gray-400">Subtotal</span>
+                <span id="modal-subtotal">Rp 0</span>
+            </div>
+            <div class="flex justify-between text-sm">
+                <span class="text-gray-400">Pajak (10%)</span>
+                <span id="modal-tax">Rp 0</span>
+            </div>
+            <div class="flex justify-between text-lg font-bold pt-2 border-t border-white/10">
+                <span>Total</span>
+                <span id="modal-total" class="text-primary-400">Rp 0</span>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="payWithCash()" class="py-3 rounded-xl bg-white/10 text-white font-semibold hover:bg-white/20 flex items-center justify-center">
+                    <i class="fas fa-money-bill mr-2"></i>Bayar di Kasir
+                </button>
+                <button onclick="payOnline()" class="py-3 rounded-xl btn-success text-white font-semibold flex items-center justify-center">
+                    <i class="fas fa-credit-card mr-2"></i>Bayar Online
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Options Modal -->
+<div id="options-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="glass-card rounded-2xl p-6 w-full max-w-md animate-fade-in">
+        <h3 class="text-lg font-semibold mb-4" id="modal-item-name">Opsi Pesanan</h3>
+        
+        <div id="spice-options" class="mb-4 hidden">
+            <label class="text-sm text-gray-400 mb-2 block">Tingkat Kepedasan</label>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="selectSpice('none')" class="spice-btn py-2 rounded-lg bg-white/5 text-gray-300 text-sm hover:bg-white/10 border-2 border-transparent" data-level="none">
+                    Tidak Pedas
+                </button>
+                <button onclick="selectSpice('medium')" class="spice-btn py-2 rounded-lg bg-white/5 text-gray-300 text-sm hover:bg-white/10 border-2 border-transparent" data-level="medium">
+                    Sedang
+                </button>
+                <button onclick="selectSpice('hot')" class="spice-btn py-2 rounded-lg bg-white/5 text-gray-300 text-sm hover:bg-white/10 border-2 border-transparent" data-level="hot">
+                    Pedas
+                </button>
+            </div>
+        </div>
+        
+        <div id="temp-options" class="mb-4 hidden">
+            <label class="text-sm text-gray-400 mb-2 block">Suhu Minuman</label>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="selectTemp('hot')" class="temp-btn py-3 rounded-lg bg-white/5 text-gray-300 text-sm hover:bg-white/10 border-2 border-transparent" data-temp="hot">
+                    <i class="fas fa-mug-hot text-orange-400 mr-2"></i>Panas
+                </button>
+                <button onclick="selectTemp('cold')" class="temp-btn py-3 rounded-lg bg-white/5 text-gray-300 text-sm hover:bg-white/10 border-2 border-transparent" data-temp="cold">
+                    <i class="fas fa-snowflake text-blue-400 mr-2"></i>Dingin
+                </button>
+            </div>
+        </div>
+        
+        <div class="mb-4">
+            <label class="text-sm text-gray-400 mb-2 block">Catatan</label>
+            <input type="text" id="item-notes" placeholder="Catatan tambahan..." 
+                   class="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-3 text-white text-sm placeholder-gray-500">
+        </div>
+        
+        <div class="flex space-x-3">
+            <button onclick="closeOptionsModal()" class="flex-1 py-2.5 rounded-xl bg-white/10 text-gray-300 font-medium">
+                Batal
+            </button>
+            <button onclick="confirmAddToCart()" class="flex-1 py-2.5 rounded-xl btn-primary text-white font-medium">
+                Tambahkan
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div id="success-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="glass-card rounded-2xl p-6 w-full max-w-md text-center animate-fade-in">
+        <div class="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-check text-green-400 text-4xl"></i>
+        </div>
+        <h3 class="text-xl font-semibold mb-2">Pesanan Berhasil!</h3>
+        <p class="text-gray-400 mb-6">Pesanan Anda sedang diproses. Silakan tunggu di meja Anda.</p>
+        <p class="text-2xl font-bold text-primary-400 mb-6" id="order-number">ORD20240101123456</p>
+        <button onclick="closeSuccessModal()" class="w-full py-3 rounded-xl btn-primary text-white font-semibold">
+            Pesan Lagi
+        </button>
+    </div>
+</div>
+
+<script>
+const tableId = {{ table.id }};
+let cart = [];
+let currentItem = null;
+let selectedSpice = 'none';
+let selectedTemp = 'normal';
+
+function formatCurrency(num) {
+    return 'Rp ' + new Intl.NumberFormat('id-ID').format(num);
+}
+
+function filterCategory(categoryId) {
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.classList.remove('bg-primary-500', 'text-white');
+        btn.classList.add('bg-white/10', 'text-gray-300');
+    });
+    document.querySelector(`.category-btn[data-category="${categoryId}"]`).classList.add('bg-primary-500', 'text-white');
+    document.querySelector(`.category-btn[data-category="${categoryId}"]`).classList.remove('bg-white/10', 'text-gray-300');
+    
+    document.querySelectorAll('.menu-item').forEach(item => {
+        if (categoryId === 'all' || item.dataset.category == categoryId) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function addToCart(id, name, price, hasSpicy, hasTemp) {
+    currentItem = { id, name, price, hasSpicy, hasTemp };
+    
+    if (hasSpicy || hasTemp) {
+        document.getElementById('modal-item-name').textContent = name;
+        document.getElementById('spice-options').classList.toggle('hidden', !hasSpicy);
+        document.getElementById('temp-options').classList.toggle('hidden', !hasTemp);
+        document.getElementById('options-modal').classList.remove('hidden');
+        document.getElementById('options-modal').classList.add('flex');
+        selectedSpice = 'none';
+        selectedTemp = 'hot';
+    } else {
+        addItemToCart(id, name, price, null, null, '');
+    }
+}
+
+function selectSpice(level) {
+    selectedSpice = level;
+    document.querySelectorAll('.spice-btn').forEach(btn => btn.classList.remove('border-primary-500'));
+    document.querySelector(`.spice-btn[data-level="${level}"]`).classList.add('border-primary-500');
+}
+
+function selectTemp(temp) {
+    selectedTemp = temp;
+    document.querySelectorAll('.temp-btn').forEach(btn => btn.classList.remove('border-primary-500'));
+    document.querySelector(`.temp-btn[data-temp="${temp}"]`).classList.add('border-primary-500');
+}
+
+function closeOptionsModal() {
+    document.getElementById('options-modal').classList.add('hidden');
+    document.getElementById('options-modal').classList.remove('flex');
+    document.getElementById('item-notes').value = '';
+}
+
+function confirmAddToCart() {
+    const notes = document.getElementById('item-notes').value;
+    addItemToCart(currentItem.id, currentItem.name, currentItem.price, 
+                  currentItem.hasSpicy ? selectedSpice : null, 
+                  currentItem.hasTemp ? selectedTemp : null, notes);
+    closeOptionsModal();
+}
+
+function addItemToCart(id, name, price, spiceLevel, temperature, notes) {
+    const existingIndex = cart.findIndex(item => 
+        item.id === id && item.spice_level === spiceLevel && item.temperature === temperature
+    );
+    
+    if (existingIndex > -1) {
+        cart[existingIndex].quantity++;
+    } else {
+        cart.push({ id, menu_item_id: id, name, price, quantity: 1, spice_level: spiceLevel, temperature, notes });
+    }
+    
+    updateCartUI();
+}
+
+function updateCartUI() {
+    const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const tax = Math.round(subtotal * 0.10);
+    const total = subtotal + tax;
+    
+    document.getElementById('cart-count').textContent = count;
+    document.getElementById('cart-total').textContent = formatCurrency(total);
+    document.getElementById('cart-button').classList.toggle('hidden', cart.length === 0);
+    
+    document.getElementById('modal-subtotal').textContent = formatCurrency(subtotal);
+    document.getElementById('modal-tax').textContent = formatCurrency(tax);
+    document.getElementById('modal-total').textContent = formatCurrency(total);
+    
+    const cartItemsEl = document.getElementById('cart-items');
+    if (cart.length === 0) {
+        cartItemsEl.innerHTML = '<p class="text-center text-gray-500 py-8">Keranjang kosong</p>';
+    } else {
+        cartItemsEl.innerHTML = cart.map((item, index) => `
+            <div class="glass rounded-xl p-3 flex items-center justify-between">
+                <div class="flex-1">
+                    <h4 class="font-medium text-sm">${item.name}</h4>
+                    <p class="text-primary-400 text-sm">${formatCurrency(item.price)}</p>
+                    ${item.spice_level ? `<span class="text-xs text-red-400">${item.spice_level}</span>` : ''}
+                    ${item.temperature ? `<span class="text-xs text-blue-400 ml-1">${item.temperature}</span>` : ''}
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="updateQty(${index}, -1)" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                        <i class="fas fa-minus text-xs"></i>
+                    </button>
+                    <span class="w-6 text-center">${item.quantity}</span>
+                    <button onclick="updateQty(${index}, 1)" class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                        <i class="fas fa-plus text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+function updateQty(index, delta) {
+    cart[index].quantity += delta;
+    if (cart[index].quantity <= 0) cart.splice(index, 1);
+    updateCartUI();
+}
+
+function openCart() {
+    document.getElementById('cart-modal').classList.remove('hidden');
+}
+
+function closeCart() {
+    document.getElementById('cart-modal').classList.add('hidden');
+}
+
+async function payWithCash() {
+    await submitOrder('cash');
+}
+
+async function payOnline() {
+    await submitOrder('midtrans');
+}
+
+async function submitOrder(paymentMethod) {
+    if (cart.length === 0) return;
+    
+    const orderData = {
+        items: cart,
+        table_id: tableId,
+        order_type: 'online',
+        payment_method: paymentMethod,
+        paid_amount: 0
+    };
+    
+    try {
+        const response = await fetch('/api/order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            closeCart();
+            document.getElementById('order-number').textContent = result.order.order_number;
+            document.getElementById('success-modal').classList.remove('hidden');
+            document.getElementById('success-modal').classList.add('flex');
+            cart = [];
+            updateCartUI();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+function closeSuccessModal() {
+    document.getElementById('success-modal').classList.add('hidden');
+    document.getElementById('success-modal').classList.remove('flex');
+}
+</script>
+{% endblock %}
