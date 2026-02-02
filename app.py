@@ -846,12 +846,16 @@ def reports():
 @role_required('admin', 'manager')
 def income_report():
     # Get date range from query params
-    start_date = request.args.get('start_date', datetime.now().strftime('%Y-%m-01'))
-    end_date = request.args.get('end_date', datetime.now().strftime('%Y-%m-%d'))
+    start_date_str = request.args.get('start_date', datetime.now().strftime('%Y-%m-01'))
+    end_date_str = request.args.get('end_date', datetime.now().strftime('%Y-%m-%d'))
+    
+    # Parse dates properly
+    start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+    end_date = datetime.strptime(end_date_str, '%Y-%m-%d') + timedelta(days=1) - timedelta(seconds=1)
     
     orders = Order.query.filter(
         Order.created_at >= start_date,
-        Order.created_at <= end_date + ' 23:59:59'
+        Order.created_at <= end_date
     ).all()
     
     paid_orders = [o for o in orders if o.payment and o.payment.status == 'paid']
@@ -873,8 +877,8 @@ def income_report():
                          total_income=total_income,
                          total_orders=total_orders,
                          daily_income=daily_income,
-                         start_date=start_date,
-                         end_date=end_date)
+                         start_date=start_date_str,
+                         end_date=end_date_str)
 
 @app.route('/reports/export/pdf')
 @login_required
@@ -1065,4 +1069,7 @@ if __name__ == '__main__':
     🌐 Server: http://localhost:8000
     """)
     
-    app.run(debug=True, host='0.0.0.0', port=8000, use_reloader=True)
+    # Use debug mode only in development (controlled by environment variable)
+    import os
+    debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    app.run(debug=debug_mode, host='0.0.0.0', port=8000, use_reloader=debug_mode)
