@@ -36,7 +36,7 @@
             --text-primary: #f8fafc;          /* Slate 50 */
             --text-secondary: #cbd5e1;        /* Slate 300 */
             
-            --sidebar-width: 240px;           /* Compact sidebar */
+            --sidebar-width: 200px;           /* Ultra-compact 2026 sidebar */
             --navbar-height: 65px;            /* Sleeker navbar */
             --glass-bg: rgba(30, 64, 175, 0.08);
             --glass-border: rgba(59, 130, 246, 0.15);
@@ -153,26 +153,34 @@
             color: var(--text-secondary);
             font-size: 0.65rem;
             text-transform: uppercase;
-            letter-spacing: 1.2px;
-            padding: 0 18px;
-            margin-bottom: 10px;
+            letter-spacing: 1.5px;
+            padding: 0 14px;
+            margin-bottom: 8px;
             font-weight: 700;
-            opacity: 0.7;
+            opacity: 0.6;
         }
         
         .menu-item {
             display: flex;
             align-items: center;
-            padding: 9px 14px;
+            gap: 10px;
+            padding: 10px 12px;
             color: var(--text-secondary);
             text-decoration: none;
-            transition: all 0.2s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
-            margin: 4px 8px;
-            border-radius: 10px;
+            margin: 3px 6px;
+            border-radius: 12px;
             font-weight: 500;
             font-size: 0.8rem;
-            letter-spacing: 0.2px;
+            letter-spacing: 0.3px;
+        }
+        
+        .menu-item i {
+            font-size: 1rem;
+            width: 20px;
+            text-align: center;
+            opacity: 0.9;
         }
         
         .menu-item::before {
@@ -185,17 +193,23 @@
             height: 0;
             background: linear-gradient(180deg, var(--primary-light), var(--secondary-light));
             border-radius: 0 5px 5px 0;
-            transition: height 0.2s ease;
+            transition: height 0.3s ease;
         }
         
         .menu-item:hover {
             color: var(--text-primary);
-            background: rgba(59, 130, 246, 0.12);
-            transform: translateX(6px);
+            background: rgba(59, 130, 246, 0.15);
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
         }
         
         .menu-item:hover::before {
-            height: 65%;
+            height: 70%;
+        }
+        
+        .menu-item:hover i {
+            transform: scale(1.1);
+            color: var(--primary-light);
         }
         
         .menu-item.active {
