@@ -1127,6 +1127,29 @@
             margin-bottom: var(--spacing-lg);
         }
     }
+    
+    /* Notification animations */
+    @keyframes slideInRight {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -1528,54 +1551,83 @@
     
     // Add to cart with selected quantity
     function addToCartWithQty(productId) {
-        const product = products.find(p => p.id === productId);
-        const qty = productQuantities[productId];
-        const existingItem = cart.find(item => item.id === productId);
-        
-        if (existingItem) {
-            existingItem.qty += qty;
-        } else {
-            cart.push({ ...product, qty: qty });
+        try {
+            const product = products.find(p => p.id === productId);
+            if (!product) {
+                console.error('Product not found:', productId);
+                showNotification('❌ Produk tidak ditemukan!');
+                return;
+            }
+            
+            const qty = productQuantities[productId] || 1;
+            const existingItem = cart.find(item => item.id === productId);
+            
+            if (existingItem) {
+                existingItem.qty += qty;
+            } else {
+                cart.push({ ...product, qty: qty });
+            }
+            
+            // Reset quantity to 1 after adding
+            productQuantities[productId] = 1;
+            const input = document.getElementById(`qty-${productId}`);
+            if (input) {
+                input.value = 1;
+            }
+            
+            updateCart();
+            
+            // Show success notification
+            showNotification(`✅ ${product.name} ditambahkan (${qty}x)`);
+            console.log('Added to cart:', product.name, 'Qty:', qty);
+        } catch (error) {
+            console.error('Error adding to cart:', error);
+            showNotification('❌ Gagal menambahkan ke keranjang!');
         }
-        
-        // Reset quantity to 1 after adding
-        productQuantities[productId] = 1;
-        const input = document.getElementById(`qty-${productId}`);
-        if (input) {
-            input.value = 1;
-        }
-        
-        updateCart();
-        
-        // Show success notification
-        showNotification(`${product.name} ditambahkan (${qty}x)`);
     }
     
     // Show notification
     function showNotification(message) {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            padding: 15px 25px;
-            border-radius: 12px;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-            z-index: 10000;
-            font-weight: 600;
-            animation: slideInRight 0.4s ease;
-        `;
-        notification.innerHTML = `<i class="fas fa-check-circle me-2"></i>${message}`;
-        document.body.appendChild(notification);
-        
-        // Remove after 3 seconds
-        setTimeout(() => {
-            notification.style.animation = 'slideOutRight 0.4s ease';
-            setTimeout(() => notification.remove(), 400);
-        }, 3000);
+        try {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(20, 184, 166, 0.95));
+                backdrop-filter: blur(10px);
+                color: white;
+                padding: 16px 28px;
+                border-radius: 16px;
+                box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+                z-index: 10000;
+                font-weight: 600;
+                font-size: 1rem;
+                animation: slideInRight 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                border: 2px solid rgba(255, 255, 255, 0.2);
+                max-width: 400px;
+                word-wrap: break-word;
+            `;
+            notification.innerHTML = `<i class="fas fa-check-circle me-2"></i>${message}`;
+            document.body.appendChild(notification);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOutRight 0.4s ease';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 400);
+            }, 3000);
+            
+            console.log('Notification shown:', message);
+        } catch (error) {
+            console.error('Error showing notification:', error);
+            // Fallback to alert if notification fails
+            alert(message);
+        }
     }
     
     // Add to cart (legacy - keep for compatibility)
@@ -1594,49 +1646,64 @@
     
     // Update cart display
     function updateCart() {
-        const cartItems = document.getElementById('cartItems');
-        
-        if (cart.length === 0) {
-            cartItems.innerHTML = `
-                <div class="cart-empty">
-                    <i class="fas fa-shopping-cart"></i>
-                    <p>Keranjang masih kosong</p>
-                    <small>Pilih produk untuk memulai transaksi</small>
-                </div>
-            `;
-        } else {
-            cartItems.innerHTML = cart.map(item => `
-                <div class="cart-item">
-                    <div class="item-info">
-                        <div>
-                            <div class="item-name">${item.name}</div>
-                            <div style="color: rgba(255,255,255,0.5); font-size: 0.85rem; margin-top: 4px;">
-                                #${item.id}
+        try {
+            const cartItems = document.getElementById('cartItems');
+            
+            if (!cartItems) {
+                console.error('Cart items container not found');
+                return;
+            }
+            
+            if (cart.length === 0) {
+                cartItems.innerHTML = `
+                    <div class="cart-empty">
+                        <i class="fas fa-shopping-cart"></i>
+                        <p>Keranjang masih kosong</p>
+                        <small>Pilih produk untuk memulai transaksi</small>
+                    </div>
+                `;
+            } else {
+                cartItems.innerHTML = cart.map(item => `
+                    <div class="cart-item">
+                        <div class="item-info">
+                            <div>
+                                <div class="item-name">${item.name}</div>
+                                <div style="color: rgba(255,255,255,0.5); font-size: 0.85rem; margin-top: 4px;">
+                                    #${item.id} • Rp ${item.price.toLocaleString('id-ID')} x ${item.qty}
+                                </div>
                             </div>
+                            <div class="item-price">Rp ${(item.price * item.qty).toLocaleString('id-ID')}</div>
                         </div>
-                        <div class="item-price">Rp ${item.price.toLocaleString('id-ID')}</div>
+                        <div class="item-controls">
+                            <button class="qty-btn" onclick="decreaseQty(${item.id})" title="Kurangi">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <div class="qty-display">${item.qty}</div>
+                            <button class="qty-btn" onclick="increaseQty(${item.id})" title="Tambah">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <button class="btn-remove" onclick="removeItem(${item.id})" title="Hapus">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="item-controls">
-                        <button class="qty-btn" onclick="decreaseQty(${item.id})">
-                            <i class="fas fa-minus"></i>
-                        </button>
-                        <div class="qty-display">${item.qty}</div>
-                        <button class="qty-btn" onclick="increaseQty(${item.id})">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                        <button class="btn-remove" onclick="removeItem(${item.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `).join('');
+                `).join('');
+            }
+            
+            updateSummary();
+            updateCartBadge(); // Update badge when cart changes
+            
+            // Save cart to localStorage
+            try {
+                localStorage.setItem('kasir_cart', JSON.stringify(cart));
+            } catch (e) {
+                console.error('Error saving cart to localStorage:', e);
+            }
+            
+            console.log('Cart updated. Items:', cart.length);
+        } catch (error) {
+            console.error('Error updating cart:', error);
         }
-        
-        updateSummary();
-        updateCartBadge(); // Update badge when cart changes
-        
-        // Save cart to localStorage
-        localStorage.setItem('kasir_cart', JSON.stringify(cart));
     }
     
     // Calculate change
@@ -1669,31 +1736,54 @@
     
     // Increase quantity
     function increaseQty(productId) {
-        const item = cart.find(i => i.id === productId);
-        if (item) {
-            item.qty++;
-            updateCart();
+        try {
+            const item = cart.find(i => i.id === productId);
+            if (item) {
+                if (item.qty >= 99) {
+                    showNotification('⚠️ Maksimal 99 item per produk!');
+                    return;
+                }
+                item.qty++;
+                updateCart();
+                console.log('Increased qty for product:', productId, 'New qty:', item.qty);
+            }
+        } catch (error) {
+            console.error('Error increasing quantity:', error);
         }
     }
     
     // Decrease quantity
     function decreaseQty(productId) {
-        const item = cart.find(i => i.id === productId);
-        if (item) {
-            if (item.qty > 1) {
-                item.qty--;
-            } else {
-                removeItem(productId);
-                return;
+        try {
+            const item = cart.find(i => i.id === productId);
+            if (item) {
+                if (item.qty > 1) {
+                    item.qty--;
+                    updateCart();
+                    console.log('Decreased qty for product:', productId, 'New qty:', item.qty);
+                } else {
+                    removeItem(productId);
+                    return;
+                }
             }
-            updateCart();
+        } catch (error) {
+            console.error('Error decreasing quantity:', error);
         }
     }
     
     // Remove item
     function removeItem(productId) {
-        cart = cart.filter(i => i.id !== productId);
-        updateCart();
+        try {
+            const item = cart.find(i => i.id === productId);
+            if (item) {
+                cart = cart.filter(i => i.id !== productId);
+                updateCart();
+                showNotification(`🗑️ ${item.name} dihapus dari keranjang`);
+                console.log('Removed item:', productId);
+            }
+        } catch (error) {
+            console.error('Error removing item:', error);
+        }
     }
     
     // Update summary
@@ -1803,35 +1893,56 @@
     }, 100);
     
     function processPayment(type) {
-        if (type === 'cash') {
-            const paidAmount = parseFloat(document.getElementById('cashAmountInput').value) || 0;
-            const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * 1.1;
+        try {
+            console.log('Processing payment:', type);
             
-            if (paidAmount < total) {
-                alert('Jumlah bayar kurang dari total!');
+            if (cart.length === 0) {
+                showNotification('❌ Keranjang kosong!');
                 return;
             }
             
-            const change = paidAmount - total;
-            showNotification(`✅ Pembayaran Tunai Berhasil! Kembalian: Rp ${change.toLocaleString('id-ID')}`);
-        } else {
             const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * 1.1;
-            showNotification(`✅ Pembayaran ${selectedPaymentMethod.toUpperCase()} Berhasil!`);
-        }
-        
-        // Clear cart and close modal
-        cart = [];
-        localStorage.removeItem('kasir_cart');
-        updateCart();
-        closePaymentGateway();
-        
-        // Close cart panel if open and restore scroll
-        const cartSection = document.getElementById('cartSection');
-        const cartOverlay = document.getElementById('cartOverlay');
-        if (cartSection && cartSection.classList.contains('active')) {
-            cartSection.classList.remove('active');
-            cartOverlay.classList.remove('active');
-            document.body.style.overflow = 'auto';
+            
+            if (type === 'cash') {
+                const paidAmount = parseFloat(document.getElementById('cashAmountInput').value) || 0;
+                
+                if (paidAmount < total) {
+                    showNotification('❌ Jumlah bayar kurang dari total!');
+                    return;
+                }
+                
+                const change = paidAmount - total;
+                showNotification(`✅ Pembayaran Tunai Berhasil! Kembalian: Rp ${change.toLocaleString('id-ID')}`);
+                console.log('Cash payment success. Change:', change);
+            } else {
+                const methodName = selectedPaymentMethod || type;
+                showNotification(`✅ Pembayaran ${methodName.toUpperCase()} Berhasil!`);
+                console.log('Digital payment success:', methodName);
+            }
+            
+            // Clear cart and close modal
+            cart = [];
+            productQuantities = {};
+            products.forEach(product => {
+                productQuantities[product.id] = 1;
+            });
+            localStorage.removeItem('kasir_cart');
+            updateCart();
+            closePaymentGateway();
+            
+            // Close cart panel if open and restore scroll
+            const cartSection = document.getElementById('cartSection');
+            const cartOverlay = document.getElementById('cartOverlay');
+            if (cartSection && cartSection.classList.contains('active')) {
+                cartSection.classList.remove('active');
+                cartOverlay.classList.remove('active');
+                document.body.style.overflow = 'auto';
+            }
+            
+            console.log('Payment completed successfully');
+        } catch (error) {
+            console.error('Payment processing error:', error);
+            showNotification('❌ Terjadi kesalahan saat memproses pembayaran!');
         }
     }
 </script>

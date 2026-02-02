@@ -338,36 +338,59 @@ def update_order_status(order_id):
 @order_bp.route('/qr-generate')
 def generate_qr():
     """Generate QR code for table ordering - PUBLIC (no login required)"""
-    table_number = request.args.get('table', '1')
-    
-    # Generate QR code URL
-    base_url = request.host_url.rstrip('/')
-    qr_url = f"{base_url}/order/menu?table={table_number}"
-    
-    return render_template('orders/qr_modern.html', 
-        qr_url=qr_url,
-        table_number=table_number
-    )
+    try:
+        table_number = request.args.get('table', '1')
+        
+        # Validate table number
+        try:
+            table_num = int(table_number)
+            if table_num < 1 or table_num > 999:
+                table_number = '1'
+        except (ValueError, TypeError):
+            table_number = '1'
+        
+        # Generate QR code URL
+        base_url = request.host_url.rstrip('/')
+        qr_url = f"{base_url}/order/menu?table={table_number}"
+        
+        current_app.logger.info(f"Generated QR for table {table_number}: {qr_url}")
+        
+        return render_template('orders/qr_modern.html', 
+            qr_url=qr_url,
+            table_number=table_number
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error generating QR page: {e}")
+        return render_template('errors/500.html'), 500
 
 @order_bp.route('/generate-qr/<int:table_number>')
 def generate_qr_api(table_number):
     """API endpoint to generate QR code image - PUBLIC"""
     try:
+        # Validate table number
+        if table_number < 1 or table_number > 999:
+            return jsonify({
+                'success': False,
+                'message': 'Nomor meja harus antara 1-999'
+            }), 400
+        
         # Generate QR code URL
         base_url = request.host_url.rstrip('/')
         menu_url = f"{base_url}/order/menu?table={table_number}"
         
-        # Generate QR code
+        current_app.logger.info(f"Generating QR API for table {table_number}")
+        
+        # Generate QR code with better settings
         qr = qrcode.QRCode(
             version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            error_correction=qrcode.constants.ERROR_CORRECT_H,  # High error correction
             box_size=10,
             border=4,
         )
         qr.add_data(menu_url)
         qr.make(fit=True)
         
-        # Create image
+        # Create image with better quality
         img = qr.make_image(fill_color="black", back_color="white")
         
         # Convert to base64
@@ -377,16 +400,25 @@ def generate_qr_api(table_number):
         img_base64 = base64.b64encode(buffer.getvalue()).decode()
         qr_data_url = f"data:image/png;base64,{img_base64}"
         
+        current_app.logger.info(f"QR code generated successfully for table {table_number}")
+        
         return jsonify({
             'success': True,
             'qr_url': qr_data_url,
             'table_number': table_number,
             'menu_url': menu_url
         })
-    except Exception as e:
+    except ValueError as e:
+        current_app.logger.error(f"Invalid table number: {e}")
         return jsonify({
             'success': False,
-            'message': str(e)
+            'message': 'Nomor meja tidak valid'
+        }), 400
+    except Exception as e:
+        current_app.logger.error(f"Error generating QR code: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Gagal generate QR: {str(e)}'
         }), 500
 
 
