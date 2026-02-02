@@ -1377,6 +1377,9 @@
 
 {% block extra_js %}
 <script>
+    // Constants
+    const MAX_ITEM_QUANTITY = 99;
+    
     // Sample products data
     const products = {{ products|tojson|safe }};
     
@@ -1503,7 +1506,7 @@
                            id="qty-${product.id}" 
                            value="${productQuantities[product.id]}" 
                            min="1" 
-                           max="99"
+                           max="${MAX_ITEM_QUANTITY}"
                            onchange="updateProductQty(${product.id}, this.value)">
                     <button class="product-qty-btn" onclick="adjustProductQty(${product.id}, 1)">
                         <i class="fas fa-plus"></i>
@@ -1532,7 +1535,7 @@
     
     // Adjust product quantity (+ or -)
     function adjustProductQty(productId, change) {
-        productQuantities[productId] = Math.max(1, Math.min(99, productQuantities[productId] + change));
+        productQuantities[productId] = Math.max(1, Math.min(MAX_ITEM_QUANTITY, productQuantities[productId] + change));
         const input = document.getElementById(`qty-${productId}`);
         if (input) {
             input.value = productQuantities[productId];
@@ -1542,7 +1545,7 @@
     // Update product quantity from input
     function updateProductQty(productId, value) {
         const qty = parseInt(value) || 1;
-        productQuantities[productId] = Math.max(1, Math.min(99, qty));
+        productQuantities[productId] = Math.max(1, Math.min(MAX_ITEM_QUANTITY, qty));
         const input = document.getElementById(`qty-${productId}`);
         if (input) {
             input.value = productQuantities[productId];
@@ -1739,8 +1742,8 @@
         try {
             const item = cart.find(i => i.id === productId);
             if (item) {
-                if (item.qty >= 99) {
-                    showNotification('⚠️ Maksimal 99 item per produk!');
+                if (item.qty >= MAX_ITEM_QUANTITY) {
+                    showNotification(`⚠️ Maksimal ${MAX_ITEM_QUANTITY} item per produk!`);
                     return;
                 }
                 item.qty++;
