@@ -1626,12 +1626,23 @@
         
         updateSummary();
         updateCartBadge(); // Update badge when cart changes
-        saveCart();
-    }
-        calculateChange();
         
         // Save cart to localStorage
         localStorage.setItem('kasir_cart', JSON.stringify(cart));
+    }
+    
+    // Calculate change
+    function calculateChange() {
+        const paidAmount = parseFloat(document.getElementById('paidAmount').value) || 0;
+        const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * 1.1;
+        
+        if (paidAmount >= total && paidAmount > 0) {
+            const change = paidAmount - total;
+            document.getElementById('changeDisplay').style.display = 'block';
+            document.getElementById('changeAmount').textContent = `Rp ${change.toLocaleString('id-ID')}`;
+        } else {
+            document.getElementById('changeDisplay').style.display = 'none';
+        }
     }
     
     // Load cart from localStorage
@@ -1688,27 +1699,6 @@
         document.getElementById('total').textContent = `Rp ${total.toLocaleString('id-ID')}`;
     }
     
-    // Calculate change
-    function calculateChange() {
-        const paidInput = document.getElementById('paidAmount');
-        const paidAmount = parseFloat(paidInput.value) || 0;
-        
-        if (cart.length === 0) {
-            document.getElementById('changeDisplay').style.display = 'none';
-            return;
-        }
-        
-        const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * 1.1;
-        
-        if (paidAmount >= total && paidAmount > 0) {
-            const change = paidAmount - total;
-            document.getElementById('changeDisplay').style.display = 'block';
-            document.getElementById('changeAmount').textContent = `Rp ${change.toLocaleString('id-ID')}`;
-        } else {
-            document.getElementById('changeDisplay').style.display = 'none';
-        }
-    }
-    
     // Clear cart
     function clearCart() {
         if (cart.length === 0) return;
@@ -1719,32 +1709,6 @@
             localStorage.removeItem('kasir_cart'); // Clear saved cart
             updateCart();
         }
-    }
-    
-    // Checkout
-    function checkout() {
-        if (cart.length === 0) {
-            alert('Keranjang masih kosong!');
-            return;
-        }
-        
-        const paidAmount = parseFloat(document.getElementById('paidAmount').value) || 0;
-        const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * 1.1;
-        
-        if (paidAmount < total) {
-            alert('Jumlah bayar kurang dari total!');
-            return;
-        }
-        
-        // Process payment (you can add AJAX call here)
-        const change = paidAmount - total;
-        alert(`Pembayaran berhasil!\nTotal: Rp ${total.toLocaleString('id-ID')}\nBayar: Rp ${paidAmount.toLocaleString('id-ID')}\nKembalian: Rp ${change.toLocaleString('id-ID')}`);
-        
-        // Clear cart
-        cart = [];
-        document.getElementById('paidAmount').value = '';
-        localStorage.removeItem('kasir_cart'); // Clear saved cart
-        updateCart();
     }
     
     // PAYMENT GATEWAY FUNCTIONS
@@ -1765,7 +1729,12 @@
     
     function closePaymentGateway() {
         document.getElementById('paymentGatewayOverlay').classList.remove('active');
-        document.body.style.overflow = 'auto';
+        
+        // Only restore scroll if cart is not open
+        const cartSection = document.getElementById('cartSection');
+        if (!cartSection || !cartSection.classList.contains('active')) {
+            document.body.style.overflow = 'auto';
+        }
         
         // Reset
         document.getElementById('cashDetails').style.display = 'none';
@@ -1848,12 +1817,13 @@
         updateCart();
         closePaymentGateway();
         
-        // Close cart panel if open
+        // Close cart panel if open and restore scroll
         const cartSection = document.getElementById('cartSection');
         const cartOverlay = document.getElementById('cartOverlay');
         if (cartSection && cartSection.classList.contains('active')) {
             cartSection.classList.remove('active');
             cartOverlay.classList.remove('active');
+            document.body.style.overflow = 'auto';
         }
     }
 </script>

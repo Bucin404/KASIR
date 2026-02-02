@@ -86,6 +86,7 @@
         }
         
         /* Modern 2026 Sidebar - Icon-Only Collapsed with Hover Expand */
+        /* Note: Sidebar expands on hover via CSS, not JavaScript toggle */
         .sidebar {
             position: fixed;
             top: 0;
@@ -102,6 +103,7 @@
             overflow: visible;
         }
         
+        /* Hover state expands sidebar to show text */
         .sidebar:hover {
             width: var(--sidebar-width-expanded);
             background: rgba(15, 23, 42, 0.98);
