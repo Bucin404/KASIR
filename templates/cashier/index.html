@@ -756,6 +756,324 @@
         to { opacity: 0; transform: translateX(100px); }
     }
     
+    /* PAYMENT GATEWAY MODAL - Modern 2026 Design */
+    .payment-gateway-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(20px);
+        z-index: 3000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    .payment-gateway-overlay.active {
+        display: flex;
+    }
+    
+    .payment-gateway-modal {
+        background: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(40px);
+        border: 2px solid rgba(59, 130, 246, 0.3);
+        border-radius: 32px;
+        max-width: 900px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 32px 96px rgba(0, 0, 0, 0.6);
+        animation: modalSlideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes modalSlideUp {
+        from { opacity: 0; transform: translateY(60px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .payment-modal-header {
+        padding: var(--spacing-lg);
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(20, 184, 166, 0.2));
+        border-bottom: 2px solid rgba(59, 130, 246, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-radius: 32px 32px 0 0;
+    }
+    
+    .payment-modal-header h2 {
+        color: #f8fafc;
+        font-size: 1.8rem;
+        font-weight: 800;
+        margin: 0;
+        display: flex;
+        align-items: center;
+    }
+    
+    .payment-close-btn {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: rgba(239, 68, 68, 0.2);
+        border: 2px solid rgba(239, 68, 68, 0.3);
+        color: #ef4444;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        transition: all 0.3s ease;
+    }
+    
+    .payment-close-btn:hover {
+        background: rgba(239, 68, 68, 0.4);
+        transform: rotate(90deg) scale(1.1);
+    }
+    
+    .payment-modal-body {
+        padding: var(--spacing-lg);
+    }
+    
+    .payment-summary-box {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(20, 184, 166, 0.15));
+        border: 2px solid rgba(59, 130, 246, 0.3);
+        border-radius: 20px;
+        padding: var(--spacing-lg);
+        margin-bottom: var(--spacing-lg);
+    }
+    
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: #f8fafc;
+        font-size: 1.4rem;
+        font-weight: 700;
+    }
+    
+    .summary-value {
+        color: var(--secondary-light);
+        font-size: 2rem;
+        font-weight: 900;
+        text-shadow: 0 3px 15px rgba(20, 184, 166, 0.6);
+    }
+    
+    .payment-methods-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-lg);
+    }
+    
+    .payment-method-card {
+        background: rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(10px);
+        border: 2px solid rgba(255, 255, 255, 0.12);
+        border-radius: 24px;
+        padding: var(--spacing-lg);
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .payment-method-card:hover {
+        transform: translateY(-6px);
+        border-color: var(--primary-light);
+        box-shadow: 0 16px 48px rgba(59, 130, 246, 0.4);
+        background: rgba(255, 255, 255, 0.12);
+    }
+    
+    .payment-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+        font-size: 2.5rem;
+    }
+    
+    .payment-icon.cash {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
+    }
+    
+    .payment-icon.debit {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+    }
+    
+    .payment-icon.ewallet {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+        box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
+    }
+    
+    .payment-icon.qris {
+        background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+        color: white;
+        box-shadow: 0 8px 24px rgba(139, 92, 246, 0.4);
+    }
+    
+    .payment-method-card h3 {
+        color: #f8fafc;
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    
+    .payment-method-card p {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        margin: 0;
+    }
+    
+    .payment-details-section {
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-radius: 24px;
+        padding: var(--spacing-lg);
+        animation: fadeInScale 0.4s ease;
+    }
+    
+    .payment-details-title {
+        color: #f8fafc;
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin-bottom: var(--spacing-md);
+        display: flex;
+        align-items: center;
+    }
+    
+    .cash-input-group label {
+        display: block;
+        color: var(--text-secondary);
+        font-size: 1rem;
+        font-weight: 600;
+        margin-bottom: 12px;
+    }
+    
+    .payment-amount-input {
+        width: 100%;
+        padding: 20px 24px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 16px;
+        color: #fff;
+        font-size: 1.6rem;
+        font-weight: 700;
+        text-align: right;
+        outline: none;
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .payment-amount-input:focus {
+        border-color: var(--primary-light);
+        background: rgba(59, 130, 246, 0.15);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+    }
+    
+    .quick-amounts {
+        display: flex;
+        gap: 12px;
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .quick-amounts button {
+        flex: 1;
+        padding: 14px 20px;
+        background: rgba(59, 130, 246, 0.2);
+        border: 2px solid rgba(59, 130, 246, 0.3);
+        border-radius: 12px;
+        color: var(--primary-light);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .quick-amounts button:hover {
+        background: rgba(59, 130, 246, 0.35);
+        transform: scale(1.05);
+    }
+    
+    .change-display-modal {
+        background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(22, 163, 74, 0.2));
+        border: 2px solid rgba(34, 197, 94, 0.4);
+        border-radius: 16px;
+        padding: var(--spacing-md);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--spacing-md);
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #f8fafc;
+    }
+    
+    .change-value {
+        color: #22c55e;
+        font-size: 1.8rem;
+        font-weight: 900;
+        text-shadow: 0 3px 15px rgba(34, 197, 94, 0.6);
+    }
+    
+    .digital-payment-info {
+        text-align: center;
+        padding: var(--spacing-xl) 0;
+    }
+    
+    .payment-qr-placeholder {
+        width: 300px;
+        height: 300px;
+        background: white;
+        border-radius: 24px;
+        margin: 0 auto var(--spacing-md);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #64748b;
+    }
+    
+    .payment-qr-placeholder p {
+        margin-top: 16px;
+        font-weight: 600;
+    }
+    
+    .digital-instruction {
+        color: var(--text-secondary);
+        font-size: 1.1rem;
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .confirm-payment-btn {
+        width: 100%;
+        padding: 20px 32px;
+        background: linear-gradient(135deg, var(--primary-main), var(--secondary-main));
+        border: none;
+        border-radius: 18px;
+        color: white;
+        font-size: 1.2rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 12px 36px rgba(59, 130, 246, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .confirm-payment-btn:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 56px rgba(59, 130, 246, 0.7);
+    }
+    
     /* Responsive */
     @media (max-width: 992px) {
         .products-grid {
@@ -913,12 +1231,115 @@
     </div>
     
     <div class="cart-actions">
-        <button class="btn-checkout" onclick="checkout()">
+        <button class="btn-checkout" onclick="showPaymentGateway()">
             <i class="fas fa-check-circle"></i>Bayar Sekarang
         </button>
         <button class="btn-clear" onclick="clearCart()" title="Clear Cart">
             <i class="fas fa-trash"></i>
         </button>
+    </div>
+</div>
+
+<!-- Payment Gateway Modal -->
+<div class="payment-gateway-overlay" id="paymentGatewayOverlay">
+    <div class="payment-gateway-modal">
+        <div class="payment-modal-header">
+            <h2><i class="fas fa-credit-card me-2"></i>Pilih Metode Pembayaran</h2>
+            <button class="payment-close-btn" onclick="closePaymentGateway()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="payment-modal-body">
+            <!-- Payment Summary -->
+            <div class="payment-summary-box">
+                <div class="summary-item">
+                    <span>Total Belanja:</span>
+                    <span class="summary-value" id="modalTotal">Rp 0</span>
+                </div>
+            </div>
+            
+            <!-- Payment Methods Grid -->
+            <div class="payment-methods-grid">
+                <!-- Cash Payment -->
+                <div class="payment-method-card" onclick="selectPaymentMethod('cash')">
+                    <div class="payment-icon cash">
+                        <i class="fas fa-money-bill-wave"></i>
+                    </div>
+                    <h3>Tunai</h3>
+                    <p>Bayar dengan uang cash</p>
+                </div>
+                
+                <!-- Debit Card -->
+                <div class="payment-method-card" onclick="selectPaymentMethod('debit')">
+                    <div class="payment-icon debit">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <h3>Kartu Debit</h3>
+                    <p>Debit BCA, Mandiri, BNI, BRI</p>
+                </div>
+                
+                <!-- E-Wallet -->
+                <div class="payment-method-card" onclick="selectPaymentMethod('ewallet')">
+                    <div class="payment-icon ewallet">
+                        <i class="fas fa-wallet"></i>
+                    </div>
+                    <h3>E-Wallet</h3>
+                    <p>GoPay, OVO, Dana, LinkAja</p>
+                </div>
+                
+                <!-- QRIS -->
+                <div class="payment-method-card" onclick="selectPaymentMethod('qris')">
+                    <div class="payment-icon qris">
+                        <i class="fas fa-qrcode"></i>
+                    </div>
+                    <h3>QRIS</h3>
+                    <p>Scan QRIS untuk bayar</p>
+                </div>
+            </div>
+            
+            <!-- Cash Payment Details -->
+            <div class="payment-details-section" id="cashDetails" style="display: none;">
+                <h3 class="payment-details-title">
+                    <i class="fas fa-money-bill-wave me-2"></i>Pembayaran Tunai
+                </h3>
+                <div class="cash-input-group">
+                    <label>Jumlah Bayar</label>
+                    <input type="number" class="payment-amount-input" id="cashAmountInput" 
+                           placeholder="Masukkan jumlah uang" min="0">
+                    <div class="quick-amounts">
+                        <button onclick="setQuickAmount('exact')">Uang Pas</button>
+                        <button onclick="setQuickAmount(50000)">50k</button>
+                        <button onclick="setQuickAmount(100000)">100k</button>
+                        <button onclick="setQuickAmount(200000)">200k</button>
+                    </div>
+                </div>
+                <div class="change-display-modal" id="modalChange" style="display: none;">
+                    <span>Kembalian:</span>
+                    <span class="change-value" id="modalChangeAmount">Rp 0</span>
+                </div>
+                <button class="confirm-payment-btn" onclick="processPayment('cash')">
+                    <i class="fas fa-check-circle me-2"></i>Konfirmasi Pembayaran
+                </button>
+            </div>
+            
+            <!-- Digital Payment Details -->
+            <div class="payment-details-section" id="digitalDetails" style="display: none;">
+                <h3 class="payment-details-title" id="digitalTitle">
+                    <i class="fas fa-credit-card me-2"></i>Pembayaran Digital
+                </h3>
+                <div class="digital-payment-info">
+                    <div class="payment-qr-placeholder">
+                        <i class="fas fa-qrcode fa-5x"></i>
+                        <p>QR Code akan muncul di sini</p>
+                    </div>
+                    <p class="digital-instruction">Scan QR code dengan aplikasi pembayaran Anda</p>
+                </div>
+                <button class="confirm-payment-btn" onclick="processPayment('digital')">
+                    <i class="fas fa-check-circle me-2"></i>Konfirmasi Pembayaran Diterima
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -1324,6 +1745,116 @@
         document.getElementById('paidAmount').value = '';
         localStorage.removeItem('kasir_cart'); // Clear saved cart
         updateCart();
+    }
+    
+    // PAYMENT GATEWAY FUNCTIONS
+    let selectedPaymentMethod = null;
+    
+    function showPaymentGateway() {
+        if (cart.length === 0) {
+            alert('Keranjang masih kosong!');
+            return;
+        }
+        
+        const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * 1.1;
+        document.getElementById('modalTotal').textContent = `Rp ${total.toLocaleString('id-ID')}`;
+        
+        document.getElementById('paymentGatewayOverlay').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closePaymentGateway() {
+        document.getElementById('paymentGatewayOverlay').classList.remove('active');
+        document.body.style.overflow = 'auto';
+        
+        // Reset
+        document.getElementById('cashDetails').style.display = 'none';
+        document.getElementById('digitalDetails').style.display = 'none';
+        const cashInput = document.getElementById('cashAmountInput');
+        if (cashInput) cashInput.value = '';
+        document.getElementById('modalChange').style.display = 'none';
+        selectedPaymentMethod = null;
+    }
+    
+    function selectPaymentMethod(method) {
+        selectedPaymentMethod = method;
+        
+        // Hide all details
+        document.getElementById('cashDetails').style.display = 'none';
+        document.getElementById('digitalDetails').style.display = 'none';
+        
+        // Show selected method details
+        if (method === 'cash') {
+            document.getElementById('cashDetails').style.display = 'block';
+        } else {
+            const titles = {
+                'debit': '<i class="fas fa-credit-card me-2"></i>Pembayaran Kartu Debit',
+                'ewallet': '<i class="fas fa-wallet me-2"></i>Pembayaran E-Wallet',
+                'qris': '<i class="fas fa-qrcode me-2"></i>Pembayaran QRIS'
+            };
+            document.getElementById('digitalTitle').innerHTML = titles[method];
+            document.getElementById('digitalDetails').style.display = 'block';
+        }
+    }
+    
+    function setQuickAmount(amount) {
+        const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * 1.1;
+        const value = amount === 'exact' ? total : amount;
+        document.getElementById('cashAmountInput').value = value;
+        calculateModalChange();
+    }
+    
+    function calculateModalChange() {
+        const paidAmount = parseFloat(document.getElementById('cashAmountInput').value) || 0;
+        const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * 1.1;
+        
+        if (paidAmount >= total) {
+            const change = paidAmount - total;
+            document.getElementById('modalChangeAmount').textContent = `Rp ${change.toLocaleString('id-ID')}`;
+            document.getElementById('modalChange').style.display = 'flex';
+        } else {
+            document.getElementById('modalChange').style.display = 'none';
+        }
+    }
+    
+    // Add cash input listener
+    setTimeout(() => {
+        const cashInput = document.getElementById('cashAmountInput');
+        if (cashInput) {
+            cashInput.addEventListener('input', calculateModalChange);
+        }
+    }, 100);
+    
+    function processPayment(type) {
+        if (type === 'cash') {
+            const paidAmount = parseFloat(document.getElementById('cashAmountInput').value) || 0;
+            const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * 1.1;
+            
+            if (paidAmount < total) {
+                alert('Jumlah bayar kurang dari total!');
+                return;
+            }
+            
+            const change = paidAmount - total;
+            showNotification(`✅ Pembayaran Tunai Berhasil! Kembalian: Rp ${change.toLocaleString('id-ID')}`);
+        } else {
+            const total = cart.reduce((sum, item) => sum + (item.price * item.qty), 0) * 1.1;
+            showNotification(`✅ Pembayaran ${selectedPaymentMethod.toUpperCase()} Berhasil!`);
+        }
+        
+        // Clear cart and close modal
+        cart = [];
+        localStorage.removeItem('kasir_cart');
+        updateCart();
+        closePaymentGateway();
+        
+        // Close cart panel if open
+        const cartSection = document.getElementById('cartSection');
+        const cartOverlay = document.getElementById('cartOverlay');
+        if (cartSection && cartSection.classList.contains('active')) {
+            cartSection.classList.remove('active');
+            cartOverlay.classList.remove('active');
+        }
     }
 </script>
 {% endblock %}
