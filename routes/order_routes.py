@@ -9,6 +9,8 @@ import string
 import json
 import hashlib
 import base64
+import qrcode
+import io
 
 order_bp = Blueprint('order', __name__, url_prefix='/order')
 
@@ -350,10 +352,6 @@ def generate_qr():
 @order_bp.route('/generate-qr/<int:table_number>')
 def generate_qr_api(table_number):
     """API endpoint to generate QR code image - PUBLIC"""
-    import qrcode
-    import io
-    import base64
-    
     try:
         # Generate QR code URL
         base_url = request.host_url.rstrip('/')
