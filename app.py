@@ -85,6 +85,16 @@ def role_required(*roles):
         return decorated_function
     return decorator
 
+# Prevent caching for dynamic pages
+@app.after_request
+def add_header(response):
+    """Add headers to prevent caching for HTML pages"""
+    if 'text/html' in response.content_type:
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, private'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+    return response
+
 # Initialize database and seed data
 def run_migrations():
     """Run database migrations for existing databases"""
@@ -1475,6 +1485,40 @@ def page_not_found(e):
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template('errors/500.html'), 500
+
+# Admin Reset Database
+@app.route('/admin/reset-database', methods=['POST'])
+@login_required
+@role_required('admin')
+def reset_database():
+    """Reset all transactional data (orders, payments, carts) but keep menu, users, tables"""
+    try:
+        # Clear cart items first (foreign key)
+        CartItem.query.delete()
+        Cart.query.delete()
+        
+        # Clear order items (foreign key)
+        OrderItem.query.delete()
+        
+        # Clear payments (foreign key)
+        Payment.query.delete()
+        
+        # Clear orders
+        Order.query.delete()
+        
+        # Clear income records
+        Income.query.delete()
+        
+        # Reset table status
+        Table.query.update({Table.status: 'available'})
+        
+        db.session.commit()
+        flash('Database berhasil direset! Semua data pesanan, pembayaran, dan keranjang telah dihapus.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error saat reset database: {str(e)}', 'danger')
+    
+    return redirect(url_for('dashboard'))
 
 if __name__ == '__main__':
     os.makedirs('static/css', exist_ok=True)
