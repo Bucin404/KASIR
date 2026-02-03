@@ -305,3 +305,87 @@ class Setting(db.Model):
     
     def __repr__(self):
         return f'<Setting {self.key}>'
+
+class Cart(db.Model):
+    """Shopping cart stored in database - supports multiple items per user/session"""
+    __tablename__ = 'carts'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    session_id = db.Column(db.String(100), nullable=True)  # For guest users
+    table_id = db.Column(db.Integer, db.ForeignKey('tables.id'), nullable=True)
+    order_type = db.Column(db.String(20), default='dine_in')
+    customer_name = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    items = db.relationship('CartItem', backref='cart', lazy='dynamic', cascade='all, delete-orphan')
+    user = db.relationship('User', backref='carts')
+    table = db.relationship('Table')
+    
+    def get_subtotal(self):
+        return sum(item.subtotal for item in self.items)
+    
+    def get_tax(self):
+        return int(self.get_subtotal() * 0.10)
+    
+    def get_total(self):
+        return self.get_subtotal() + self.get_tax()
+    
+    def get_item_count(self):
+        return sum(item.quantity for item in self.items)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'table_id': self.table_id,
+            'order_type': self.order_type,
+            'customer_name': self.customer_name,
+            'items': [item.to_dict() for item in self.items],
+            'subtotal': self.get_subtotal(),
+            'tax': self.get_tax(),
+            'total': self.get_total(),
+            'item_count': self.get_item_count()
+        }
+    
+    def __repr__(self):
+        return f'<Cart {self.id}>'
+
+class CartItem(db.Model):
+    """Individual item in a shopping cart"""
+    __tablename__ = 'cart_items'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    cart_id = db.Column(db.Integer, db.ForeignKey('carts.id'), nullable=False)
+    menu_item_id = db.Column(db.Integer, db.ForeignKey('menu_items.id'), nullable=False)
+    name = db.Column(db.String(200), nullable=False)
+    price = db.Column(db.Integer, nullable=False)
+    quantity = db.Column(db.Integer, default=1)
+    subtotal = db.Column(db.Integer, nullable=False)
+    spice_level = db.Column(db.String(20))  # none, mild, medium, hot, extra_hot
+    temperature = db.Column(db.String(20))  # hot, cold, normal
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    menu_item = db.relationship('MenuItem')
+    
+    def update_subtotal(self):
+        self.subtotal = self.price * self.quantity
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'menu_item_id': self.menu_item_id,
+            'name': self.name,
+            'price': self.price,
+            'quantity': self.quantity,
+            'subtotal': self.subtotal,
+            'spice_level': self.spice_level,
+            'temperature': self.temperature,
+            'notes': self.notes
+        }
+    
+    def __repr__(self):
+        return f'<CartItem {self.name} x{self.quantity}>'

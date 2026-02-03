@@ -281,8 +281,8 @@
 </div>
 
 <script>
-// Cart state
-let cart = [];
+// Cart state - loaded from database
+let cart = { items: [], subtotal: 0, tax: 0, total: 0 };
 let paymentMethod = 'cash';
 let currentItem = null;
 let selectedSpice = 'none';
@@ -292,6 +292,23 @@ let selectedTemp = 'normal';
 function formatCurrency(num) {
     return 'Rp ' + new Intl.NumberFormat('id-ID').format(num);
 }
+
+// Load cart from database on page load
+async function loadCart() {
+    try {
+        const response = await fetch('/api/cart');
+        const result = await response.json();
+        if (result.success) {
+            cart = result.cart;
+            updateCartUI();
+        }
+    } catch (error) {
+        console.error('Error loading cart:', error);
+    }
+}
+
+// Initialize cart on page load
+document.addEventListener('DOMContentLoaded', loadCart);
 
 // Filter menu by category
 function filterCategory(categoryId) {
@@ -318,27 +335,21 @@ document.getElementById('search-menu').addEventListener('input', function(e) {
     const query = e.target.value.toLowerCase();
     document.querySelectorAll('.menu-item').forEach(item => {
         const name = item.dataset.name.toLowerCase();
-        if (name.includes(query)) {
-            item.style.display = 'block';
-        } else {
-            item.style.display = 'none';
-        }
+        item.style.display = name.includes(query) ? 'block' : 'none';
     });
 });
 
-// Add to cart
+// Add to cart - show options modal if needed
 function addToCart(id, name, price, hasSpicy, hasTemp) {
     currentItem = { id, name, price, hasSpicy, hasTemp };
     
     if (hasSpicy || hasTemp) {
-        // Show options modal
         document.getElementById('modal-item-name').textContent = name;
         document.getElementById('spice-options').classList.toggle('hidden', !hasSpicy);
         document.getElementById('temp-options').classList.toggle('hidden', !hasTemp);
         document.getElementById('options-modal').classList.remove('hidden');
         document.getElementById('options-modal').classList.add('flex');
         
-        // Reset selections
         selectedSpice = 'none';
         selectedTemp = 'normal';
         document.querySelectorAll('.spice-btn, .temp-btn').forEach(btn => {
@@ -346,7 +357,7 @@ function addToCart(id, name, price, hasSpicy, hasTemp) {
             btn.classList.add('border-transparent');
         });
     } else {
-        addItemToCart(id, name, price, null, null, '');
+        addItemToCartAPI(id, null, null, '');
     }
 }
 
@@ -378,47 +389,57 @@ function closeOptionsModal() {
 
 function confirmAddToCart() {
     const notes = document.getElementById('item-notes').value;
-    addItemToCart(currentItem.id, currentItem.name, currentItem.price, 
-                  currentItem.hasSpicy ? selectedSpice : null, 
-                  currentItem.hasTemp ? selectedTemp : null, notes);
+    addItemToCartAPI(
+        currentItem.id, 
+        currentItem.hasSpicy ? selectedSpice : null, 
+        currentItem.hasTemp ? selectedTemp : null, 
+        notes
+    );
     closeOptionsModal();
 }
 
-function addItemToCart(id, name, price, spiceLevel, temperature, notes) {
-    // Check if item exists with same options
-    const existingIndex = cart.findIndex(item => 
-        item.id === id && item.spice_level === spiceLevel && item.temperature === temperature && item.notes === notes
-    );
-    
-    if (existingIndex > -1) {
-        cart[existingIndex].quantity++;
-    } else {
-        cart.push({
-            id, 
-            menu_item_id: id,
-            name, 
-            price, 
-            quantity: 1,
-            spice_level: spiceLevel,
-            temperature: temperature,
-            notes: notes
+// Add item to cart via API (database)
+async function addItemToCartAPI(menuItemId, spiceLevel, temperature, notes) {
+    try {
+        const response = await fetch('/api/cart/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                menu_item_id: menuItemId,
+                quantity: 1,
+                spice_level: spiceLevel,
+                temperature: temperature,
+                notes: notes
+            })
         });
+        
+        const result = await response.json();
+        if (result.success) {
+            cart = result.cart;
+            updateCartUI();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        console.error('Error adding to cart:', error);
     }
-    
-    updateCartUI();
 }
 
 function updateCartUI() {
     const cartContainer = document.getElementById('cart-items');
     const emptyCart = document.getElementById('empty-cart');
+    const items = cart.items || [];
     
-    if (cart.length === 0) {
-        cartContainer.innerHTML = '';
-        cartContainer.appendChild(emptyCart);
-        emptyCart.classList.remove('hidden');
+    if (items.length === 0) {
+        cartContainer.innerHTML = `
+            <div id="empty-cart" class="text-center py-12 text-gray-500">
+                <i class="fas fa-shopping-cart text-4xl mb-3"></i>
+                <p>Keranjang kosong</p>
+                <p class="text-sm">Klik menu untuk menambahkan</p>
+            </div>
+        `;
     } else {
-        emptyCart.classList.add('hidden');
-        cartContainer.innerHTML = cart.map((item, index) => `
+        cartContainer.innerHTML = items.map(item => `
             <div class="glass rounded-xl p-3">
                 <div class="flex items-start justify-between">
                     <div class="flex-1">
@@ -428,21 +449,21 @@ function updateCartUI() {
                         ${item.temperature ? `<span class="text-xs text-blue-400 ml-2"><i class="fas fa-thermometer-half mr-1"></i>${item.temperature}</span>` : ''}
                         ${item.notes ? `<p class="text-xs text-gray-500 mt-1">${item.notes}</p>` : ''}
                     </div>
-                    <button onclick="removeFromCart(${index})" class="text-red-400 hover:text-red-300">
+                    <button onclick="removeFromCart(${item.id})" class="text-red-400 hover:text-red-300">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 <div class="flex items-center justify-between mt-2">
                     <div class="flex items-center space-x-2">
-                        <button onclick="updateQuantity(${index}, -1)" class="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20">
+                        <button onclick="updateQuantity(${item.id}, -1)" class="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20">
                             <i class="fas fa-minus text-xs"></i>
                         </button>
                         <span class="w-8 text-center font-medium">${item.quantity}</span>
-                        <button onclick="updateQuantity(${index}, 1)" class="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20">
+                        <button onclick="updateQuantity(${item.id}, 1)" class="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20">
                             <i class="fas fa-plus text-xs"></i>
                         </button>
                     </div>
-                    <span class="font-semibold">${formatCurrency(item.price * item.quantity)}</span>
+                    <span class="font-semibold">${formatCurrency(item.subtotal)}</span>
                 </div>
             </div>
         `).join('');
@@ -459,26 +480,72 @@ function updateQuantity(index, delta) {
     updateCartUI();
 }
 
-function removeFromCart(index) {
-    cart.splice(index, 1);
-    updateCartUI();
+// Remove item from cart via API
+async function removeFromCart(itemId) {
+    try {
+        const response = await fetch(`/api/cart/remove/${itemId}`, {
+            method: 'DELETE'
+        });
+        const result = await response.json();
+        if (result.success) {
+            cart = result.cart;
+            updateCartUI();
+        }
+    } catch (error) {
+        console.error('Error removing from cart:', error);
+    }
 }
 
-function clearCart() {
-    cart = [];
-    updateCartUI();
+// Clear all cart items via API
+async function clearCart() {
+    try {
+        const response = await fetch('/api/cart/clear', {
+            method: 'DELETE'
+        });
+        const result = await response.json();
+        if (result.success) {
+            cart = result.cart;
+            updateCartUI();
+        }
+    } catch (error) {
+        console.error('Error clearing cart:', error);
+    }
+}
+
+// Update item quantity via API
+async function updateQuantity(itemId, delta) {
+    const item = cart.items.find(i => i.id === itemId);
+    if (!item) return;
+    
+    const newQuantity = item.quantity + delta;
+    
+    if (newQuantity <= 0) {
+        removeFromCart(itemId);
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/cart/update/${itemId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quantity: newQuantity })
+        });
+        const result = await response.json();
+        if (result.success) {
+            cart = result.cart;
+            updateCartUI();
+        }
+    } catch (error) {
+        console.error('Error updating quantity:', error);
+    }
 }
 
 function updateTotals() {
-    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const tax = Math.round(subtotal * 0.10);
-    const total = subtotal + tax;
+    document.getElementById('subtotal').textContent = formatCurrency(cart.subtotal || 0);
+    document.getElementById('tax').textContent = formatCurrency(cart.tax || 0);
+    document.getElementById('total').textContent = formatCurrency(cart.total || 0);
     
-    document.getElementById('subtotal').textContent = formatCurrency(subtotal);
-    document.getElementById('tax').textContent = formatCurrency(tax);
-    document.getElementById('total').textContent = formatCurrency(total);
-    
-    document.getElementById('checkout-btn').disabled = cart.length === 0;
+    document.getElementById('checkout-btn').disabled = !cart.items || cart.items.length === 0;
     
     calculateChange();
 }
@@ -501,8 +568,7 @@ function setQuickCash(amount) {
 }
 
 function calculateChange() {
-    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const total = subtotal + Math.round(subtotal * 0.10);
+    const total = cart.total || 0;
     const paid = parseInt(document.getElementById('paid-amount').value) || 0;
     const change = Math.max(0, paid - total);
     
@@ -512,10 +578,9 @@ function calculateChange() {
 }
 
 async function processCheckout() {
-    if (cart.length === 0) return;
+    if (!cart.items || cart.items.length === 0) return;
     
-    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const total = subtotal + Math.round(subtotal * 0.10);
+    const total = cart.total || 0;
     const paid = parseInt(document.getElementById('paid-amount').value) || 0;
     
     if (paymentMethod === 'cash' && paid < total) {
@@ -524,7 +589,7 @@ async function processCheckout() {
     }
     
     const orderData = {
-        items: cart,
+        items: cart.items,
         table_id: document.getElementById('table-select').value || null,
         order_type: document.getElementById('order-type').value,
         customer_name: document.getElementById('customer-name').value,
