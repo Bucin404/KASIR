@@ -618,13 +618,10 @@ async function processCheckout() {
         const result = await response.json();
         
         if (result.success) {
-            // Handle online payment with Midtrans Snap
-            if (result.payment_method === 'online' && result.snap_token) {
-                openMidtransPayment(result.snap_token, result.order);
-            } else if (result.payment_method === 'online' && !result.snap_token) {
-                // Payment gateway error, show pending order
-                alert(result.error_payment || 'Gagal terhubung ke payment gateway. Pesanan tetap dibuat dengan status pending.');
-                showPendingOrder(result.order);
+            // Handle online payment - redirect to custom payment page
+            if (result.payment_method === 'online') {
+                // Redirect to beautiful payment page
+                window.location.href = `/payment/${result.order.id}`;
             } else {
                 // Cash payment success
                 showReceipt(result.order);

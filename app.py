@@ -1372,6 +1372,85 @@ def export_excel():
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
 
+# Payment page with custom design
+@app.route('/payment/<int:order_id>')
+@login_required
+def payment_page(order_id):
+    order = db.session.get(Order, order_id)
+    if not order:
+        flash('Pesanan tidak ditemukan', 'error')
+        return redirect(url_for('orders'))
+    
+    # Get snap token from payment or generate new one
+    snap_token = None
+    if order.payment and order.payment.snap_token:
+        snap_token = order.payment.snap_token
+    elif order.payment and order.payment.status == 'pending':
+        # Generate snap token if not exists
+        try:
+            import midtransclient
+            
+            snap = midtransclient.Snap(
+                is_production=app.config.get('MIDTRANS_IS_PRODUCTION', False),
+                server_key=app.config.get('MIDTRANS_SERVER_KEY', ''),
+                client_key=app.config.get('MIDTRANS_CLIENT_KEY', '')
+            )
+            
+            param = {
+                "transaction_details": {
+                    "order_id": f"DTO-{order.id}-{int(datetime.now().timestamp())}",
+                    "gross_amount": int(order.total)
+                },
+                "customer_details": {
+                    "first_name": current_user.full_name or current_user.username,
+                    "email": current_user.email or f"{current_user.username}@dapoerterasobor.com"
+                },
+                "item_details": [{
+                    "id": str(item.menu_item_id),
+                    "price": int(item.price),
+                    "quantity": item.quantity,
+                    "name": item.menu_item.name[:50]
+                } for item in order.items]
+            }
+            
+            transaction = snap.create_transaction(param)
+            snap_token = transaction.get('token')
+            
+            # Save snap token
+            order.payment.snap_token = snap_token
+            db.session.commit()
+        except Exception as e:
+            print(f"Error generating snap token: {e}")
+    
+    return render_template('payment.html', 
+                         order=order, 
+                         snap_token=snap_token or '',
+                         auto_pay=bool(snap_token),
+                         config=app.config)
+
+# API to update payment status from frontend
+@app.route('/api/payment/<int:order_id>/status', methods=['POST'])
+@login_required
+def update_payment_status(order_id):
+    order = db.session.get(Order, order_id)
+    if not order or not order.payment:
+        return jsonify({'error': 'Order not found'}), 404
+    
+    data = request.json
+    status = data.get('status', 'pending')
+    
+    if status == 'paid':
+        order.payment.status = 'paid'
+        order.payment.paid_at = datetime.utcnow()
+        order.status = 'completed'
+    elif status == 'pending':
+        order.payment.status = 'pending'
+    elif status == 'failed':
+        order.payment.status = 'failed'
+    
+    db.session.commit()
+    return jsonify({'success': True, 'status': order.payment.status})
+
 # Order management
 @app.route('/orders')
 @login_required
