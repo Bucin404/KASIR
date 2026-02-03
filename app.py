@@ -1275,11 +1275,11 @@ def admin_table_delete(table_id):
     table = Table.query.get_or_404(table_id)
     
     # Check if table has active orders
-    active_orders = Order.query.filter_by(table_id=table_id).filter(
+    has_active_order = Order.query.filter_by(table_id=table_id).filter(
         Order.status.in_(['pending', 'processing'])
-    ).first()
+    ).first() is not None
     
-    if active_orders:
+    if has_active_order:
         flash('Tidak bisa hapus meja dengan pesanan aktif!', 'danger')
         return redirect(url_for('admin_tables'))
     

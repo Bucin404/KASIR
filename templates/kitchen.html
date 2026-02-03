@@ -105,7 +105,7 @@ function getButtonText(status) {
 
 async function updateItemStatus(itemId, newStatus) {
     try {
-        const response = await fetch(`/api/kitchen/item/${itemId}/status`, {
+        const response = await fetch(`/api/kitchen/item/${encodeURIComponent(itemId)}/status`, {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({status: newStatus})
@@ -114,16 +114,18 @@ async function updateItemStatus(itemId, newStatus) {
         if (response.ok) {
             loadOrders();
         } else {
-            alert('Gagal update status');
+            const data = await response.json().catch(() => ({}));
+            alert('Gagal update status: ' + (data.error || `HTTP ${response.status}`));
         }
     } catch (error) {
         console.error('Error:', error);
+        alert('Error koneksi: ' + error.message);
     }
 }
 
 async function updateOrderStatus(orderId, newStatus) {
     try {
-        const response = await fetch(`/api/kitchen/order/${orderId}/status`, {
+        const response = await fetch(`/api/kitchen/order/${encodeURIComponent(orderId)}/status`, {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({status: newStatus})
@@ -132,10 +134,12 @@ async function updateOrderStatus(orderId, newStatus) {
         if (response.ok) {
             loadOrders();
         } else {
-            alert('Gagal update status');
+            const data = await response.json().catch(() => ({}));
+            alert('Gagal update status: ' + (data.error || `HTTP ${response.status}`));
         }
     } catch (error) {
         console.error('Error:', error);
+        alert('Error koneksi: ' + error.message);
     }
 }
 

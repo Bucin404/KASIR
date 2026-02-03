@@ -59,13 +59,20 @@
             {% for table in tables %}
             <div class="glass-card rounded-2xl p-4 text-center relative group">
                 <!-- Delete button -->
-                <button onclick="confirmDelete({{ table.id }}, '{{ table.number }}')" 
-                        class="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/40 opacity-0 group-hover:opacity-100 transition-opacity text-xs">
+                <button data-table-id="{{ table.id }}" data-table-number="{{ table.number }}"
+                        onclick="confirmDelete(this.dataset.tableId, this.dataset.tableNumber)" 
+                        class="absolute top-2 right-2 w-6 h-6 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/40 opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                        aria-label="Hapus meja {{ table.number }}">
                     <i class="fas fa-times"></i>
                 </button>
                 
-                <div onclick="toggleStatus({{ table.id }})" 
-                     class="w-16 h-16 mx-auto rounded-xl flex items-center justify-center text-2xl font-bold mb-3 cursor-pointer hover:scale-105 transition-transform
+                <div data-table-id="{{ table.id }}"
+                     onclick="toggleStatus(this.dataset.tableId)" 
+                     onkeypress="if(event.key==='Enter')toggleStatus(this.dataset.tableId)"
+                     tabindex="0"
+                     role="button"
+                     aria-label="Toggle status meja {{ table.number }}"
+                     class="w-16 h-16 mx-auto rounded-xl flex items-center justify-center text-2xl font-bold mb-3 cursor-pointer hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-primary-500
                     {% if table.status == 'available' %}bg-green-500/20 text-green-400
                     {% elif table.status == 'occupied' %}bg-yellow-500/20 text-yellow-400
                     {% else %}bg-blue-500/20 text-blue-400{% endif %}" id="table-box-{{ table.id }}">
@@ -79,7 +86,8 @@
                     </span>
                 </p>
                 <div class="flex space-x-2 justify-center">
-                    <button onclick="generateQR({{ table.id }}, '{{ table.number }}')" 
+                    <button data-table-id="{{ table.id }}" data-table-number="{{ table.number }}"
+                            onclick="generateQR(this.dataset.tableId, this.dataset.tableNumber)" 
                             class="px-3 py-1.5 rounded-lg bg-primary-500/20 text-primary-400 text-sm hover:bg-primary-500/30">
                         <i class="fas fa-qrcode mr-1"></i>QR
                     </button>
