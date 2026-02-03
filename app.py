@@ -27,7 +27,7 @@ login_manager.login_message_category = 'warning'
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 # Custom Jinja2 filters
 def format_number_filter(value):
@@ -46,6 +46,17 @@ def format_currency(value):
 
 app.jinja_env.filters['format_number'] = format_number_filter
 app.jinja_env.filters['format_currency'] = format_currency
+
+# Context processor to make config available in all templates
+@app.context_processor
+def inject_config():
+    return {
+        'config': {
+            'MIDTRANS_CLIENT_KEY': app.config.get('MIDTRANS_CLIENT_KEY', 'SB-Mid-client-XXXXXX'),
+            'MIDTRANS_IS_PRODUCTION': app.config.get('MIDTRANS_IS_PRODUCTION', False),
+            'APP_NAME': 'Dapoer Teras Obor'
+        }
+    }
 
 # Permission decorator
 def permission_required(permission):
@@ -594,7 +605,7 @@ def api_add_to_cart():
         temperature = data.get('temperature')
         notes = data.get('notes', '')
         
-        menu_item = MenuItem.query.get(menu_item_id)
+        menu_item = db.session.get(MenuItem, menu_item_id)
         if not menu_item:
             return jsonify({'success': False, 'error': 'Menu item not found'}), 404
         
@@ -745,7 +756,7 @@ def api_create_order():
         
         # Add order items
         for item in items:
-            menu_item = MenuItem.query.get(item.get('menu_item_id') or item.get('id'))
+            menu_item = db.session.get(MenuItem, item.get('menu_item_id') or item.get('id'))
             if menu_item:
                 order_item = OrderItem(
                     order_id=order.id,
@@ -783,14 +794,14 @@ def api_create_order():
         
         # Update table status
         if table_id:
-            table = Table.query.get(table_id)
+            table = db.session.get(Table, table_id)
             if table:
                 table.status = 'occupied'
                 db.session.commit()
         
         # For online payment (Midtrans), generate Snap token
         if payment_method == 'online':
-            midtrans_order_id = f"KASIR-{order.order_number}"
+            midtrans_order_id = f"DTO-{order.order_number}"
             payment.midtrans_order_id = midtrans_order_id
             payment.payment_method = 'midtrans'
             
@@ -943,7 +954,7 @@ def api_create_midtrans_payment():
         order = Order.query.get_or_404(order_id)
         
         # Create Midtrans transaction (simplified - in production use midtransclient)
-        midtrans_order_id = f"KASIR-{order.order_number}"
+        midtrans_order_id = f"DTO-{order.order_number}"
         
         # Update payment
         if order.payment:
@@ -1104,7 +1115,7 @@ def admin_create_user():
     user.set_password(password)
     
     if role_id:
-        role = Role.query.get(role_id)
+        role = db.session.get(Role, role_id)
         if role:
             user.roles.append(role)
     

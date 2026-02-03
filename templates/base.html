@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Kasir Modern{% endblock %}</title>
+    <title>{% block title %}Dapoer Teras Obor{% endblock %}</title>
     
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -50,7 +50,11 @@
     </script>
     
     <!-- Midtrans Snap.js for Payment Gateway -->
-    <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ config.MIDTRANS_CLIENT_KEY if config else 'SB-Mid-client-XXXXXX' }}"></script>
+    {% if config.MIDTRANS_IS_PRODUCTION %}
+    <script src="https://app.midtrans.com/snap/snap.js" data-client-key="{{ config.MIDTRANS_CLIENT_KEY }}"></script>
+    {% else %}
+    <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ config.MIDTRANS_CLIENT_KEY }}"></script>
+    {% endif %}
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
