@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Kasir / POS - Kasir Modern{% endblock %}
+{% block title %}Kasir / POS - Dapoer Teras Obor{% endblock %}
 
 {% block body %}
 <div class="flex h-screen overflow-hidden">
@@ -13,9 +13,7 @@
                     <i class="fas fa-arrow-left"></i>
                 </a>
                 <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
-                        <i class="fas fa-cash-register text-white"></i>
-                    </div>
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Dapoer Teras Obor" class="w-10 h-10 rounded-xl object-contain">
                     <div>
                         <h1 class="text-lg font-display font-bold">Point of Sale</h1>
                         <p class="text-gray-400 text-xs">{{ now.strftime('%d %B %Y') }}</p>
@@ -32,11 +30,21 @@
                 </div>
             </div>
             
-            <!-- User Info -->
-            <div class="flex items-center space-x-3">
-                <span class="text-sm text-gray-400">{{ current_user.full_name or current_user.username }}</span>
-                <div class="w-8 h-8 rounded-full bg-primary-500/20 flex items-center justify-center">
-                    <i class="fas fa-user text-primary-400 text-sm"></i>
+            <!-- User Info & Printer -->
+            <div class="flex items-center space-x-4">
+                <!-- Bluetooth Printer Button -->
+                <button id="printer-status-btn" onclick="connectBluetoothPrinter()" 
+                        class="flex items-center space-x-2 px-3 py-2 rounded-xl bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition text-sm"
+                        title="Hubungkan printer Bluetooth">
+                    <i class="fas fa-print"></i>
+                    <span class="hidden md:inline">Printer</span>
+                </button>
+                
+                <div class="flex items-center space-x-3">
+                    <span class="text-sm text-gray-400">{{ current_user.full_name or current_user.username }}</span>
+                    <div class="w-8 h-8 rounded-full bg-primary-500/20 flex items-center justify-center">
+                        <i class="fas fa-user text-primary-400 text-sm"></i>
+                    </div>
                 </div>
             </div>
         </header>
@@ -270,12 +278,15 @@
         </div>
         
         <div class="flex space-x-3">
-            <button onclick="printReceipt()" class="flex-1 py-2.5 rounded-xl bg-white/10 text-gray-300 font-medium hover:bg-white/20">
-                <i class="fas fa-print mr-2"></i>Cetak
+            <button onclick="printReceipt()" class="flex-1 py-2.5 rounded-xl bg-white/10 text-gray-300 font-medium hover:bg-white/20" id="print-receipt-btn">
+                <i class="fas fa-print mr-2"></i><span id="print-btn-text">Cetak</span>
             </button>
             <button onclick="newOrder()" class="flex-1 py-2.5 rounded-xl btn-primary text-white font-medium">
                 <i class="fas fa-plus mr-2"></i>Pesanan Baru
             </button>
+        </div>
+        <div class="text-center mt-2">
+            <span id="printer-connected-text" class="text-xs text-gray-500"></span>
         </div>
     </div>
 </div>
@@ -707,6 +718,9 @@ function showPendingOrder(order) {
 }
 
 function showReceipt(order) {
+    // Store order for Bluetooth printing
+    currentReceiptOrder = order;
+    
     const receiptContent = document.getElementById('receipt-content');
     receiptContent.innerHTML = `
         <div class="text-center mb-4">
@@ -763,7 +777,312 @@ function showReceipt(order) {
 }
 
 function printReceipt() {
-    window.print();
+    // Check if Bluetooth printing is available
+    if ('bluetooth' in navigator && connectedPrinter) {
+        printViaBluetooth();
+    } else {
+        // Fallback to browser print
+        window.print();
+    }
+}
+
+// Bluetooth Printer Support
+let connectedPrinter = null;
+let printerCharacteristic = null;
+
+// ESC/POS Commands for thermal printers
+const ESC_POS = {
+    INIT: [0x1B, 0x40],                          // Initialize printer
+    ALIGN_CENTER: [0x1B, 0x61, 0x01],            // Center align
+    ALIGN_LEFT: [0x1B, 0x61, 0x00],              // Left align
+    BOLD_ON: [0x1B, 0x45, 0x01],                 // Bold on
+    BOLD_OFF: [0x1B, 0x45, 0x00],                // Bold off
+    DOUBLE_HEIGHT: [0x1B, 0x21, 0x10],           // Double height
+    NORMAL_SIZE: [0x1B, 0x21, 0x00],             // Normal size
+    CUT_PAPER: [0x1D, 0x56, 0x00],               // Full cut
+    FEED_LINE: [0x0A],                           // Line feed
+    FEED_LINES: (n) => [0x1B, 0x64, n],          // Feed n lines
+};
+
+// Connect to Bluetooth Printer
+async function connectBluetoothPrinter() {
+    try {
+        // Show loading
+        showToast('Mencari printer Bluetooth...', 'info');
+        
+        // Request Bluetooth device - common thermal printer services
+        const device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: [
+                '000018f0-0000-1000-8000-00805f9b34fb', // Common thermal printer service
+                '49535343-fe7d-4ae5-8fa9-9fafd205e455', // Common SPP-like service
+                'e7810a71-73ae-499d-8c15-faa9aef0c3f2', // Another common service
+            ]
+        });
+        
+        showToast(`Terhubung ke: ${device.name || 'Printer'}`, 'info');
+        
+        // Connect to GATT server
+        const server = await device.gatt.connect();
+        
+        // Try to get the service
+        let service = null;
+        const serviceUUIDs = [
+            '000018f0-0000-1000-8000-00805f9b34fb',
+            '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+            'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
+        ];
+        
+        for (const uuid of serviceUUIDs) {
+            try {
+                service = await server.getPrimaryService(uuid);
+                if (service) break;
+            } catch (e) {
+                continue;
+            }
+        }
+        
+        if (!service) {
+            // Get all services and try the first one
+            const services = await server.getPrimaryServices();
+            if (services.length > 0) {
+                service = services[0];
+            }
+        }
+        
+        if (!service) {
+            throw new Error('Tidak dapat menemukan service printer');
+        }
+        
+        // Get characteristics
+        const characteristics = await service.getCharacteristics();
+        
+        // Find writable characteristic
+        for (const char of characteristics) {
+            if (char.properties.write || char.properties.writeWithoutResponse) {
+                printerCharacteristic = char;
+                break;
+            }
+        }
+        
+        if (!printerCharacteristic) {
+            throw new Error('Tidak dapat menemukan karakteristik tulis');
+        }
+        
+        connectedPrinter = device;
+        
+        // Update UI
+        updatePrinterStatus(true, device.name);
+        showToast(`Printer terhubung: ${device.name || 'Bluetooth Printer'}`, 'success');
+        
+        // Handle disconnect
+        device.addEventListener('gattserverdisconnected', () => {
+            connectedPrinter = null;
+            printerCharacteristic = null;
+            updatePrinterStatus(false);
+            showToast('Printer terputus', 'warning');
+        });
+        
+    } catch (error) {
+        console.error('Bluetooth error:', error);
+        if (error.name === 'NotFoundError') {
+            showToast('Tidak ada printer yang dipilih', 'warning');
+        } else if (error.name === 'NotSupportedError') {
+            showToast('Bluetooth tidak didukung di browser ini. Gunakan Chrome/Edge.', 'error');
+        } else {
+            showToast('Gagal menghubungkan printer: ' + error.message, 'error');
+        }
+    }
+}
+
+// Update printer status indicator
+function updatePrinterStatus(connected, printerName = '') {
+    const statusBtn = document.getElementById('printer-status-btn');
+    if (statusBtn) {
+        if (connected) {
+            statusBtn.innerHTML = `<i class="fas fa-print text-green-400"></i> <span class="hidden md:inline">${printerName || 'Terhubung'}</span>`;
+            statusBtn.classList.remove('text-gray-400');
+            statusBtn.classList.add('text-green-400');
+        } else {
+            statusBtn.innerHTML = '<i class="fas fa-print"></i> <span class="hidden md:inline">Printer</span>';
+            statusBtn.classList.remove('text-green-400');
+            statusBtn.classList.add('text-gray-400');
+        }
+    }
+}
+
+// Print via Bluetooth
+async function printViaBluetooth() {
+    if (!connectedPrinter || !printerCharacteristic) {
+        showToast('Printer tidak terhubung', 'error');
+        return;
+    }
+    
+    try {
+        // Get current receipt data
+        const receiptContent = document.getElementById('receipt-content');
+        const order = getReceiptData(); // We'll need to store order data
+        
+        // Build ESC/POS commands
+        const commands = buildReceiptCommands(order || parseReceiptFromDOM(receiptContent));
+        
+        // Send commands in chunks (BLE has packet size limits)
+        const chunkSize = 100;
+        for (let i = 0; i < commands.length; i += chunkSize) {
+            const chunk = commands.slice(i, i + chunkSize);
+            await printerCharacteristic.writeValue(new Uint8Array(chunk));
+            // Small delay between chunks
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        
+        showToast('Struk berhasil dicetak!', 'success');
+    } catch (error) {
+        console.error('Print error:', error);
+        showToast('Gagal mencetak: ' + error.message, 'error');
+    }
+}
+
+// Store current order for printing
+let currentReceiptOrder = null;
+
+function getReceiptData() {
+    return currentReceiptOrder;
+}
+
+// Build ESC/POS receipt commands
+function buildReceiptCommands(order) {
+    const encoder = new TextEncoder();
+    let commands = [];
+    
+    // Initialize printer
+    commands.push(...ESC_POS.INIT);
+    
+    // Header - Center aligned, bold
+    commands.push(...ESC_POS.ALIGN_CENTER);
+    commands.push(...ESC_POS.BOLD_ON);
+    commands.push(...ESC_POS.DOUBLE_HEIGHT);
+    commands.push(...encoder.encode('Dapoer Teras Obor'));
+    commands.push(...ESC_POS.FEED_LINE);
+    
+    commands.push(...ESC_POS.NORMAL_SIZE);
+    commands.push(...ESC_POS.BOLD_OFF);
+    commands.push(...encoder.encode('Jl. Rw. Belong, Jakarta Barat'));
+    commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...encoder.encode('================================'));
+    commands.push(...ESC_POS.FEED_LINE);
+    
+    // Order info
+    commands.push(...ESC_POS.ALIGN_LEFT);
+    commands.push(...encoder.encode(`No: ${order.order_number || 'N/A'}`));
+    commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...encoder.encode(`Waktu: ${new Date().toLocaleString('id-ID')}`));
+    commands.push(...ESC_POS.FEED_LINE);
+    if (order.table) {
+        commands.push(...encoder.encode(`Meja: ${order.table}`));
+        commands.push(...ESC_POS.FEED_LINE);
+    }
+    commands.push(...encoder.encode('--------------------------------'));
+    commands.push(...ESC_POS.FEED_LINE);
+    
+    // Items
+    if (order.items && order.items.length > 0) {
+        for (const item of order.items) {
+            const name = item.name.substring(0, 20);
+            const qty = `x${item.quantity}`;
+            const price = formatNumber(item.subtotal);
+            
+            commands.push(...encoder.encode(name));
+            commands.push(...ESC_POS.FEED_LINE);
+            commands.push(...encoder.encode(`  ${qty}            Rp ${price}`));
+            commands.push(...ESC_POS.FEED_LINE);
+        }
+    }
+    
+    commands.push(...encoder.encode('--------------------------------'));
+    commands.push(...ESC_POS.FEED_LINE);
+    
+    // Totals
+    const pad = (label, value) => {
+        const space = 32 - label.length - value.length;
+        return label + ' '.repeat(Math.max(1, space)) + value;
+    };
+    
+    commands.push(...encoder.encode(pad('Subtotal:', `Rp ${formatNumber(order.subtotal || 0)}`)));
+    commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...encoder.encode(pad('Pajak (10%):', `Rp ${formatNumber(order.tax || 0)}`)));
+    commands.push(...ESC_POS.FEED_LINE);
+    
+    commands.push(...ESC_POS.BOLD_ON);
+    commands.push(...encoder.encode(pad('TOTAL:', `Rp ${formatNumber(order.total || 0)}`)));
+    commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...ESC_POS.BOLD_OFF);
+    
+    if (order.payment) {
+        commands.push(...encoder.encode(pad('Bayar:', `Rp ${formatNumber(order.payment.paid_amount || 0)}`)));
+        commands.push(...ESC_POS.FEED_LINE);
+        commands.push(...encoder.encode(pad('Kembalian:', `Rp ${formatNumber(order.payment.change_amount || 0)}`)));
+        commands.push(...ESC_POS.FEED_LINE);
+    }
+    
+    commands.push(...encoder.encode('================================'));
+    commands.push(...ESC_POS.FEED_LINE);
+    
+    // Footer
+    commands.push(...ESC_POS.ALIGN_CENTER);
+    commands.push(...encoder.encode('Terima kasih atas kunjungan Anda!'));
+    commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...encoder.encode('Selamat menikmati'));
+    commands.push(...ESC_POS.FEED_LINES(4));
+    
+    // Cut paper
+    commands.push(...ESC_POS.CUT_PAPER);
+    
+    return commands;
+}
+
+// Parse receipt data from DOM if order object not available
+function parseReceiptFromDOM(element) {
+    // Simple fallback - extract text from receipt
+    return {
+        order_number: 'N/A',
+        items: [],
+        subtotal: 0,
+        tax: 0,
+        total: 0
+    };
+}
+
+// Toast notification helper
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    
+    const icons = {
+        success: 'fa-check-circle text-green-400',
+        error: 'fa-exclamation-circle text-red-400',
+        warning: 'fa-exclamation-triangle text-yellow-400',
+        info: 'fa-info-circle text-blue-400'
+    };
+    
+    toast.className = 'glass-card rounded-lg p-4 flex items-center space-x-3 max-w-sm animate-fade-in cursor-pointer';
+    toast.innerHTML = `
+        <i class="fas ${icons[type]} text-xl"></i>
+        <span class="text-sm text-gray-200">${message}</span>
+        <button class="ml-auto text-gray-400 hover:text-white">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    toast.onclick = () => toast.remove();
+    container.appendChild(toast);
+    
+    // Auto remove after 4 seconds
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.style.animation = 'slideOut 0.3s ease forwards';
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, 4000);
 }
 
 function newOrder() {

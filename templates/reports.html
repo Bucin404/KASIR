@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Laporan - Kasir Modern{% endblock %}
+{% block title %}Laporan - Dapoer Teras Obor{% endblock %}
 
 {% block body %}
 <div class="flex min-h-screen">
@@ -8,10 +8,8 @@
     <aside class="w-64 glass-dark fixed h-full z-40">
         <div class="p-6">
             <div class="flex items-center space-x-3 mb-8">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
-                    <i class="fas fa-cash-register text-white"></i>
-                </div>
-                <span class="text-xl font-display font-bold gradient-text"Dapoer Teras Obor</span>
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Dapoer Teras Obor" class="w-10 h-10 rounded-xl object-contain">
+                <span class="text-xl font-display font-bold gradient-text">Dapoer Teras Obor</span>
             </div>
             <nav class="space-y-2">
                 <a href="{{ url_for('dashboard') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white">

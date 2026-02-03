@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Pesan Online - Meja {{ table.number }} - Kasir Modern{% endblock %}
+{% block title %}Pesan Online - Meja {{ table.number }} - Dapoer Teras Obor{% endblock %}
 
 {% block body %}
 <div class="min-h-screen pb-32">
@@ -8,9 +8,7 @@
     <header class="glass-dark sticky top-0 z-40 p-4">
         <div class="max-w-4xl mx-auto flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
-                    <i class="fas fa-utensils text-white"></i>
-                </div>
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="Dapoer Teras Obor" class="w-10 h-10 rounded-xl object-contain">
                 <div>
                     <h1 class="font-display font-bold gradient-text">Dapoer Teras Obor</h1>
                     <p class="text-xs text-gray-400">Pesan dari meja Anda</p>
