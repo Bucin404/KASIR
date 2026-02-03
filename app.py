@@ -75,9 +75,36 @@ def role_required(*roles):
     return decorator
 
 # Initialize database and seed data
+def run_migrations():
+    """Run database migrations for existing databases"""
+    from sqlalchemy import inspect, text
+    
+    inspector = inspect(db.engine)
+    
+    # Check if payments table exists and add snap_token column if missing
+    if 'payments' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('payments')]
+        if 'snap_token' not in columns:
+            with db.engine.connect() as conn:
+                conn.execute(text('ALTER TABLE payments ADD COLUMN snap_token VARCHAR(255)'))
+                conn.commit()
+            print("Added snap_token column to payments table")
+    
+    # Check if cart table exists (new feature)
+    if 'cart' not in inspector.get_table_names():
+        # db.create_all will handle this
+        pass
+    
+    if 'cart_item' not in inspector.get_table_names():
+        # db.create_all will handle this
+        pass
+
 def init_db():
     with app.app_context():
         db.create_all()
+        
+        # Run migrations for existing databases
+        run_migrations()
         
         # Create default permissions
         permissions_data = [
