@@ -49,6 +49,9 @@
         }
     </script>
     
+    <!-- Midtrans Snap.js for Payment Gateway -->
+    <script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{ config.MIDTRANS_CLIENT_KEY if config else 'SB-Mid-client-XXXXXX' }}"></script>
+    
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -67,20 +70,17 @@
         
         .glass {
             background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         .glass-dark {
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(10px);
+            background: rgba(15, 23, 42, 0.95);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         .glass-card {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         .gradient-text {

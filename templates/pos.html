@@ -607,13 +607,103 @@ async function processCheckout() {
         const result = await response.json();
         
         if (result.success) {
-            showReceipt(result.order);
+            // Handle online payment with Midtrans Snap
+            if (result.payment_method === 'online' && result.snap_token) {
+                openMidtransPayment(result.snap_token, result.order);
+            } else if (result.payment_method === 'online' && !result.snap_token) {
+                // Payment gateway error, show pending order
+                alert(result.error_payment || 'Gagal terhubung ke payment gateway. Pesanan tetap dibuat dengan status pending.');
+                showPendingOrder(result.order);
+            } else {
+                // Cash payment success
+                showReceipt(result.order);
+            }
         } else {
             alert('Error: ' + result.error);
         }
     } catch (error) {
         alert('Error: ' + error.message);
     }
+}
+
+// Open Midtrans Snap popup for online payment
+function openMidtransPayment(snapToken, order) {
+    if (typeof window.snap !== 'undefined') {
+        window.snap.pay(snapToken, {
+            onSuccess: function(result) {
+                console.log('Payment success:', result);
+                // Update payment status
+                updatePaymentStatus(order.id, 'paid', result);
+                showReceipt(order);
+                clearCart();
+            },
+            onPending: function(result) {
+                console.log('Payment pending:', result);
+                alert('Pembayaran pending. Silakan selesaikan pembayaran Anda.');
+                showPendingOrder(order);
+            },
+            onError: function(result) {
+                console.log('Payment error:', result);
+                alert('Pembayaran gagal. Silakan coba lagi.');
+            },
+            onClose: function() {
+                console.log('Snap popup closed');
+                alert('Pembayaran dibatalkan. Pesanan Anda tetap tersimpan dengan status pending.');
+            }
+        });
+    } else {
+        // Snap.js not loaded, show fallback
+        alert('Payment gateway tidak tersedia. Silakan hubungi kasir untuk pembayaran manual.');
+        showPendingOrder(order);
+    }
+}
+
+// Update payment status after Midtrans callback
+async function updatePaymentStatus(orderId, status, midtransResult) {
+    try {
+        await fetch('/api/payment/midtrans/callback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                order_id: midtransResult.order_id,
+                transaction_status: status === 'paid' ? 'settlement' : 'pending',
+                transaction_id: midtransResult.transaction_id
+            })
+        });
+    } catch (error) {
+        console.error('Error updating payment status:', error);
+    }
+}
+
+// Show pending order modal
+function showPendingOrder(order) {
+    const receiptContent = document.getElementById('receipt-content');
+    receiptContent.innerHTML = `
+        <div class="text-center mb-4">
+            <div class="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-2">
+                <i class="fas fa-clock text-yellow-400 text-xl"></i>
+            </div>
+            <h4 class="font-bold text-yellow-400">MENUNGGU PEMBAYARAN</h4>
+            <p class="text-gray-400 text-xs">Pesanan belum dibayar</p>
+        </div>
+        <div class="border-t border-dashed border-white/20 py-2">
+            <p class="text-xs text-gray-400">${order.order_number}</p>
+            <p class="text-xs text-gray-400">${new Date().toLocaleString('id-ID')}</p>
+            ${order.table ? `<p class="text-xs text-gray-400">Meja: ${order.table}</p>` : ''}
+        </div>
+        <div class="border-t border-dashed border-white/20 py-2">
+            <div class="flex justify-between font-bold">
+                <span>Total</span>
+                <span>${formatCurrency(order.total)}</span>
+            </div>
+        </div>
+        <div class="text-center text-xs text-yellow-400 pt-2 border-t border-dashed border-white/20">
+            Silakan selesaikan pembayaran
+        </div>
+    `;
+    
+    document.getElementById('receipt-modal').classList.remove('hidden');
+    document.getElementById('receipt-modal').classList.add('flex');
 }
 
 function showReceipt(order) {
@@ -667,6 +757,9 @@ function showReceipt(order) {
     
     document.getElementById('receipt-modal').classList.remove('hidden');
     document.getElementById('receipt-modal').classList.add('flex');
+    
+    // Clear cart after showing receipt
+    clearCart();
 }
 
 function printReceipt() {

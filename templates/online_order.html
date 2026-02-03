@@ -356,7 +356,7 @@ async function payWithCash() {
 }
 
 async function payOnline() {
-    await submitOrder('midtrans');
+    await submitOrder('online');
 }
 
 async function submitOrder(paymentMethod) {
@@ -380,12 +380,24 @@ async function submitOrder(paymentMethod) {
         const result = await response.json();
         
         if (result.success) {
-            closeCart();
-            document.getElementById('order-number').textContent = result.order.order_number;
-            document.getElementById('success-modal').classList.remove('hidden');
-            document.getElementById('success-modal').classList.add('flex');
-            cart = [];
-            updateCartUI();
+            // Handle online payment with Midtrans Snap
+            if (result.payment_method === 'online' && result.snap_token) {
+                closeCart();
+                openMidtransPayment(result.snap_token, result.order);
+            } else if (result.payment_method === 'online' && !result.snap_token) {
+                // Payment gateway error
+                alert(result.error_payment || 'Gagal terhubung ke payment gateway. Silakan bayar di kasir.');
+                closeCart();
+                showPendingOrder(result.order);
+            } else {
+                // Cash payment - show success
+                closeCart();
+                document.getElementById('order-number').textContent = result.order.order_number;
+                document.getElementById('success-modal').classList.remove('hidden');
+                document.getElementById('success-modal').classList.add('flex');
+                cart = [];
+                updateCartUI();
+            }
         } else {
             alert('Error: ' + result.error);
         }
@@ -394,9 +406,72 @@ async function submitOrder(paymentMethod) {
     }
 }
 
+// Open Midtrans Snap popup for online payment
+function openMidtransPayment(snapToken, order) {
+    if (typeof window.snap !== 'undefined') {
+        window.snap.pay(snapToken, {
+            onSuccess: function(result) {
+                console.log('Payment success:', result);
+                updatePaymentStatus(order.id, 'paid', result);
+                showSuccessModal(order.order_number);
+                cart = [];
+                updateCartUI();
+            },
+            onPending: function(result) {
+                console.log('Payment pending:', result);
+                alert('Pembayaran pending. Silakan selesaikan pembayaran Anda.');
+                showPendingOrder(order);
+            },
+            onError: function(result) {
+                console.log('Payment error:', result);
+                alert('Pembayaran gagal. Silakan coba lagi atau bayar di kasir.');
+            },
+            onClose: function() {
+                console.log('Snap popup closed');
+                alert('Pembayaran dibatalkan. Pesanan Anda tersimpan, silakan bayar di kasir.');
+            }
+        });
+    } else {
+        alert('Payment gateway tidak tersedia. Silakan bayar di kasir.');
+        showPendingOrder(order);
+    }
+}
+
+async function updatePaymentStatus(orderId, status, midtransResult) {
+    try {
+        await fetch('/api/payment/midtrans/callback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                order_id: midtransResult.order_id,
+                transaction_status: status === 'paid' ? 'settlement' : 'pending'
+            })
+        });
+    } catch (error) {
+        console.error('Error updating payment:', error);
+    }
+}
+
+function showSuccessModal(orderNumber) {
+    document.getElementById('order-number').textContent = orderNumber;
+    document.getElementById('success-modal').classList.remove('hidden');
+    document.getElementById('success-modal').classList.add('flex');
+}
+
+function showPendingOrder(order) {
+    document.getElementById('order-number').textContent = order.order_number + ' (Belum Bayar)';
+    document.getElementById('success-modal').querySelector('h3').textContent = 'Pesanan Dibuat';
+    document.getElementById('success-modal').querySelector('p').textContent = 'Silakan selesaikan pembayaran di kasir.';
+    document.getElementById('success-modal').classList.remove('hidden');
+    document.getElementById('success-modal').classList.add('flex');
+}
+
 function closeSuccessModal() {
     document.getElementById('success-modal').classList.add('hidden');
     document.getElementById('success-modal').classList.remove('flex');
+    // Reset modal text
+    document.getElementById('success-modal').querySelector('h3').textContent = 'Pesanan Berhasil!';
+    document.getElementById('success-modal').querySelector('p').textContent = 'Pesanan Anda sedang diproses. Silakan tunggu di meja Anda.';
 }
 </script>
 {% endblock %}

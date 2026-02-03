@@ -255,6 +255,7 @@ class Payment(db.Model):
     midtrans_order_id = db.Column(db.String(100))
     midtrans_transaction_id = db.Column(db.String(100))
     midtrans_status = db.Column(db.String(50))
+    snap_token = db.Column(db.String(255))  # Midtrans Snap token
     payment_url = db.Column(db.String(500))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     paid_at = db.Column(db.DateTime)

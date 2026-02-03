@@ -215,7 +215,7 @@ def seed_menu_items():
         {'code': '131', 'name': 'Nasi Goreng Cabe Ijo', 'price': 22000, 'category': nasi_goreng, 'has_spicy': True, 'popular': True, 'image': 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=400&h=300&fit=crop'},
         {'code': '141', 'name': 'Nasi Goreng Sosis', 'price': 23000, 'category': nasi_goreng, 'has_spicy': True, 'popular': False, 'image': 'https://images.unsplash.com/photo-1596560548464-f010549b84d7?w=400&h=300&fit=crop'},
         {'code': '151', 'name': 'Nasi Goreng Modern Warno', 'price': 24000, 'category': nasi_goreng, 'has_spicy': True, 'popular': False, 'image': 'https://images.unsplash.com/photo-1617093727343-374698b1b08d?w=400&h=300&fit=crop'},
-        {'code': '161', 'name': 'Nasi Goreng Terimaskenthir', 'price': 25000, 'category': nasi_goreng, 'has_spicy': True, 'popular': False, 'image': 'https://images.unsplash.com/photo-1645696301019-35adcc18fc89?w=400&h=300&fit=crop'},
+        {'code': '161', 'name': 'Nasi Goreng Terimaskenthir', 'price': 25000, 'category': nasi_goreng, 'has_spicy': True, 'popular': False, 'image': 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&h=300&fit=crop'},
         {'code': '171', 'name': 'Nasi Goreng Pete', 'price': 25000, 'category': nasi_goreng, 'has_spicy': True, 'popular': True, 'image': 'https://images.unsplash.com/photo-1569058242253-92a9c755a0ec?w=400&h=300&fit=crop'},
         {'code': '181', 'name': 'Nasi Goreng Seafood', 'price': 28000, 'category': nasi_goreng, 'has_spicy': True, 'popular': True, 'image': 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&h=300&fit=crop'},
         
@@ -260,7 +260,7 @@ def seed_menu_items():
         
         # Minuman
         {'code': '717', 'name': 'Teh Mlarat', 'price': 3000, 'category': minuman, 'has_spicy': False, 'popular': False, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=400&h=300&fit=crop'},
-        {'code': '727', 'name': 'Teh Manis', 'price': 5000, 'category': minuman, 'has_spicy': False, 'popular': True, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1597481499753-6e63aca6d3f3?w=400&h=300&fit=crop'},
+        {'code': '727', 'name': 'Teh Manis', 'price': 5000, 'category': minuman, 'has_spicy': False, 'popular': True, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=400&h=300&fit=crop'},
         {'code': '737', 'name': 'Air Mineral', 'price': 5000, 'category': minuman, 'has_spicy': False, 'popular': False, 'has_temp': False, 'image': 'https://images.unsplash.com/photo-1523362628745-0c100150b504?w=400&h=300&fit=crop'},
         {'code': '747', 'name': 'Kopi Hitam', 'price': 6000, 'category': minuman, 'has_spicy': False, 'popular': False, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400&h=300&fit=crop'},
         {'code': '757', 'name': 'Green Tea', 'price': 13000, 'category': minuman, 'has_spicy': False, 'popular': True, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&h=300&fit=crop'},
@@ -274,7 +274,8 @@ def seed_menu_items():
     ]
     
     for item_data in menu_items_data:
-        if not MenuItem.query.filter_by(code=item_data['code']).first():
+        existing_item = MenuItem.query.filter_by(code=item_data['code']).first()
+        if not existing_item:
             menu_item = MenuItem(
                 code=item_data['code'],
                 name=item_data['name'],
@@ -287,6 +288,9 @@ def seed_menu_items():
                 description=f"Menu {item_data['name']} yang lezat"
             )
             db.session.add(menu_item)
+        else:
+            # Update image URL if it changed
+            existing_item.image = item_data.get('image', existing_item.image)
     
     db.session.commit()
 
@@ -414,21 +418,58 @@ def dashboard():
     # Get statistics
     today = datetime.now().date()
     
+    # Get only completed/paid orders today
     today_orders = Order.query.filter(
         db.func.date(Order.created_at) == today
     ).all()
     
-    total_income_today = sum(o.total for o in today_orders if o.payment and o.payment.status == 'paid')
-    total_orders_today = len(today_orders)
+    # Calculate income from paid orders only
+    paid_orders_today = [o for o in today_orders if o.payment and o.payment.status == 'paid']
+    total_income_today = sum(o.total for o in paid_orders_today)
+    total_orders_today = len(paid_orders_today)
     
-    # Get popular items
-    popular_items = MenuItem.query.filter_by(is_popular=True).limit(6).all()
+    # Get popular items from actual order statistics (last 30 days)
+    # Query to find most ordered items
+    popular_query = db.session.query(
+        OrderItem.menu_item_id,
+        db.func.sum(OrderItem.quantity).label('total_ordered')
+    ).join(Order).filter(
+        Order.created_at >= datetime.now() - timedelta(days=30),
+        Order.status.in_(['completed', 'processing'])
+    ).group_by(OrderItem.menu_item_id).order_by(
+        db.func.sum(OrderItem.quantity).desc()
+    ).limit(6).all()
+    
+    # Get menu items for popular items
+    popular_item_ids = [item[0] for item in popular_query if item[0]]
+    if popular_item_ids:
+        popular_items = MenuItem.query.filter(MenuItem.id.in_(popular_item_ids)).all()
+        # Sort by order count
+        item_order = {item_id: idx for idx, (item_id, _) in enumerate(popular_query)}
+        popular_items.sort(key=lambda x: item_order.get(x.id, 999))
+    else:
+        # Fallback to marked popular items if no orders yet
+        popular_items = MenuItem.query.filter_by(is_popular=True).limit(6).all()
     
     # Get recent orders
     recent_orders = Order.query.order_by(Order.created_at.desc()).limit(10).all()
     
-    # Get tables status
+    # Get tables status - based on active orders
     tables = Table.query.filter_by(is_active=True).all()
+    
+    # Calculate occupied tables from current active orders
+    active_orders = Order.query.filter(
+        Order.status.in_(['pending', 'processing']),
+        Order.table_id.isnot(None)
+    ).all()
+    occupied_table_ids = set(o.table_id for o in active_orders)
+    
+    # Update tables status dynamically
+    for table in tables:
+        if table.id in occupied_table_ids:
+            table.status = 'occupied'
+        else:
+            table.status = 'available'
     
     return render_template('dashboard.html',
                          total_income_today=total_income_today,
@@ -695,17 +736,18 @@ def api_create_order():
         # Calculate totals
         order.calculate_totals()
         
-        # Create payment
+        # Create payment record
+        is_cash_paid = payment_method == 'cash' and paid_amount >= order.total
         payment = Payment(
             order_id=order.id,
             payment_method=payment_method,
             amount=order.total,
             paid_amount=paid_amount if payment_method == 'cash' else 0,
             change_amount=max(0, paid_amount - order.total) if payment_method == 'cash' else 0,
-            status='paid' if payment_method == 'cash' and paid_amount >= order.total else 'pending'
+            status='paid' if is_cash_paid else 'pending'
         )
         
-        if payment.status == 'paid':
+        if is_cash_paid:
             payment.paid_at = datetime.utcnow()
             order.status = 'processing'
         
@@ -719,15 +761,136 @@ def api_create_order():
                 table.status = 'occupied'
                 db.session.commit()
         
+        # For online payment (Midtrans), generate Snap token
+        if payment_method == 'online':
+            midtrans_order_id = f"KASIR-{order.order_number}"
+            payment.midtrans_order_id = midtrans_order_id
+            payment.payment_method = 'midtrans'
+            
+            # Generate Midtrans Snap token using Snap API
+            snap_token = generate_midtrans_snap_token(order, midtrans_order_id)
+            
+            if snap_token:
+                payment.snap_token = snap_token
+                db.session.commit()
+                
+                return jsonify({
+                    'success': True,
+                    'order': order.to_dict(),
+                    'payment_method': 'online',
+                    'snap_token': snap_token,
+                    'midtrans_client_key': app.config.get('MIDTRANS_CLIENT_KEY'),
+                    'message': 'Pesanan dibuat, silakan lakukan pembayaran.'
+                })
+            else:
+                # Fallback: still create order but mark as pending
+                db.session.commit()
+                return jsonify({
+                    'success': True,
+                    'order': order.to_dict(),
+                    'payment_method': 'online',
+                    'snap_token': None,
+                    'error_payment': 'Gagal menghubungi payment gateway, silakan coba lagi.',
+                    'message': 'Pesanan dibuat dengan status pending.'
+                })
+        
+        # Clear cart after successful order
+        if current_user.is_authenticated:
+            cart = Cart.query.filter_by(user_id=current_user.id).first()
+        else:
+            session_id = session.get('cart_session_id')
+            cart = Cart.query.filter_by(session_id=session_id).first() if session_id else None
+        
+        if cart:
+            CartItem.query.filter_by(cart_id=cart.id).delete()
+            db.session.commit()
+        
         return jsonify({
             'success': True,
             'order': order.to_dict(),
+            'payment_method': 'cash',
             'message': 'Pesanan berhasil dibuat!'
         })
         
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+def generate_midtrans_snap_token(order, midtrans_order_id):
+    """Generate Midtrans Snap token for payment"""
+    import requests
+    import base64
+    
+    server_key = app.config.get('MIDTRANS_SERVER_KEY', '')
+    is_production = app.config.get('MIDTRANS_IS_PRODUCTION', False)
+    
+    # Determine API URL
+    if is_production:
+        snap_url = 'https://app.midtrans.com/snap/v1/transactions'
+    else:
+        snap_url = 'https://app.sandbox.midtrans.com/snap/v1/transactions'
+    
+    # Prepare transaction details
+    transaction_details = {
+        'order_id': midtrans_order_id,
+        'gross_amount': int(order.total)
+    }
+    
+    # Prepare item details
+    item_details = []
+    for item in order.items:
+        item_details.append({
+            'id': str(item.menu_item_id),
+            'price': int(item.price),
+            'quantity': item.quantity,
+            'name': item.name[:50]  # Midtrans limits name to 50 chars
+        })
+    
+    # Add tax as item
+    if order.tax > 0:
+        item_details.append({
+            'id': 'TAX',
+            'price': int(order.tax),
+            'quantity': 1,
+            'name': 'Pajak (10%)'
+        })
+    
+    # Customer details
+    customer_details = {
+        'first_name': order.customer_name or 'Customer',
+        'email': 'customer@kasir.local'
+    }
+    
+    if current_user.is_authenticated:
+        customer_details['first_name'] = current_user.full_name or current_user.username
+        customer_details['email'] = current_user.email or 'customer@kasir.local'
+    
+    # Build request payload
+    payload = {
+        'transaction_details': transaction_details,
+        'item_details': item_details,
+        'customer_details': customer_details
+    }
+    
+    # Create authorization header
+    auth_string = base64.b64encode(f"{server_key}:".encode()).decode()
+    headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': f'Basic {auth_string}'
+    }
+    
+    try:
+        response = requests.post(snap_url, json=payload, headers=headers, timeout=30)
+        if response.status_code == 201:
+            data = response.json()
+            return data.get('token')
+        else:
+            print(f"Midtrans error: {response.status_code} - {response.text}")
+            return None
+    except Exception as e:
+        print(f"Midtrans connection error: {e}")
+        return None
 
 @app.route('/api/order/<int:order_id>/status', methods=['PUT'])
 @login_required
