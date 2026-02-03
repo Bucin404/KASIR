@@ -222,6 +222,7 @@ class OrderItem(db.Model):
     spice_level = db.Column(db.String(20))  # none, mild, medium, hot, extra_hot
     temperature = db.Column(db.String(20))  # hot, cold, normal
     notes = db.Column(db.Text)
+    item_status = db.Column(db.String(20), default='pending')  # pending, cooking, ready, served
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     menu_item = db.relationship('MenuItem')
@@ -236,7 +237,8 @@ class OrderItem(db.Model):
             'subtotal': self.subtotal,
             'spice_level': self.spice_level,
             'temperature': self.temperature,
-            'notes': self.notes
+            'notes': self.notes,
+            'item_status': self.item_status
         }
     
     def __repr__(self):

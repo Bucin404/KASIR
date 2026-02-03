@@ -62,6 +62,13 @@
                 </a>
                 {% endif %}
                 
+                {% if current_user.has_role('admin') or current_user.has_role('manager') or current_user.has_role('koki') %}
+                <a href="{{ url_for('kitchen') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white">
+                    <i class="fas fa-fire-burner w-5"></i>
+                    <span>Dapur</span>
+                </a>
+                {% endif %}
+                
                 <div class="pt-4 mt-4 border-t border-white/10">
                     <a href="{{ url_for('profile') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white">
                         <i class="fas fa-user-circle w-5"></i>

@@ -22,6 +22,11 @@
                 <a href="{{ url_for('orders') }}" class="sidebar-link active flex items-center space-x-3 px-4 py-3 rounded-xl text-white">
                     <i class="fas fa-receipt w-5"></i><span>Pesanan</span>
                 </a>
+                {% if current_user.has_role('admin') or current_user.has_role('manager') or current_user.has_role('koki') %}
+                <a href="{{ url_for('kitchen') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white">
+                    <i class="fas fa-fire-burner w-5"></i><span>Dapur</span>
+                </a>
+                {% endif %}
                 <div class="pt-4 mt-4 border-t border-white/10">
                     <a href="{{ url_for('logout') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-red-400 hover:text-red-300">
                         <i class="fas fa-sign-out-alt w-5"></i><span>Logout</span>

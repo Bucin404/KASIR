@@ -111,6 +111,15 @@ def run_migrations():
                 conn.commit()
             print("Added snap_token column to payments table")
     
+    # Check if order_items table exists and add item_status column if missing
+    if 'order_items' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('order_items')]
+        if 'item_status' not in columns:
+            with db.engine.connect() as conn:
+                conn.execute(text("ALTER TABLE order_items ADD COLUMN item_status VARCHAR(20) DEFAULT 'pending'"))
+                conn.commit()
+            print("Added item_status column to order_items table")
+    
     # Check if cart table exists (new feature)
     if 'cart' not in inspector.get_table_names():
         # db.create_all will handle this
@@ -162,6 +171,10 @@ def init_db():
                 'description': 'Kasir untuk proses pembayaran',
                 'permissions': ['view_dashboard', 'manage_orders', 'process_payment']
             },
+            'koki': {
+                'description': 'Koki untuk mengelola pesanan di dapur',
+                'permissions': ['view_dashboard', 'manage_orders']
+            },
             'customer': {
                 'description': 'Pelanggan untuk memesan online',
                 'permissions': ['view_dashboard']
@@ -206,6 +219,18 @@ def init_db():
             kasir.set_password('kasir123')
             kasir.roles.append(kasir_role)
             db.session.add(kasir)
+        
+        # Create default koki user
+        if not User.query.filter_by(username='koki').first():
+            koki_role = Role.query.filter_by(name='koki').first()
+            koki = User(
+                username='koki',
+                email='koki@kasir.com',
+                full_name='Koki Dapur'
+            )
+            koki.set_password('koki123')
+            koki.roles.append(koki_role)
+            db.session.add(koki)
         
         db.session.commit()
         
@@ -398,6 +423,11 @@ def login():
             
             next_page = request.args.get('next')
             flash(f'Selamat datang, {user.full_name or user.username}!', 'success')
+            
+            # Redirect koki to kitchen display
+            if user.has_role('koki') and not user.has_role('admin'):
+                return redirect(next_page or url_for('kitchen'))
+            
             return redirect(next_page or url_for('dashboard'))
         else:
             flash('Username atau password salah!', 'danger')
@@ -1209,6 +1239,193 @@ def admin_table_qr(table_id):
         'table_number': table.number
     })
 
+@app.route('/admin/tables/add', methods=['POST'])
+@login_required
+@role_required('admin', 'manager')
+def admin_table_add():
+    """Add new table"""
+    number = request.form.get('number', '').strip()
+    name = request.form.get('name', '').strip()
+    capacity = int(request.form.get('capacity', 4))
+    
+    if not number:
+        flash('Nomor meja wajib diisi!', 'danger')
+        return redirect(url_for('admin_tables'))
+    
+    if Table.query.filter_by(number=number).first():
+        flash('Nomor meja sudah ada!', 'danger')
+        return redirect(url_for('admin_tables'))
+    
+    table = Table(
+        number=number,
+        name=name or f"Meja {number}",
+        capacity=capacity
+    )
+    db.session.add(table)
+    db.session.commit()
+    
+    flash(f'Meja {number} berhasil ditambahkan!', 'success')
+    return redirect(url_for('admin_tables'))
+
+@app.route('/admin/tables/<int:table_id>/delete', methods=['POST'])
+@login_required
+@role_required('admin', 'manager')
+def admin_table_delete(table_id):
+    """Delete a table"""
+    table = Table.query.get_or_404(table_id)
+    
+    # Check if table has active orders
+    active_orders = Order.query.filter_by(table_id=table_id).filter(
+        Order.status.in_(['pending', 'processing'])
+    ).first()
+    
+    if active_orders:
+        flash('Tidak bisa hapus meja dengan pesanan aktif!', 'danger')
+        return redirect(url_for('admin_tables'))
+    
+    table_num = table.number
+    db.session.delete(table)
+    db.session.commit()
+    
+    flash(f'Meja {table_num} berhasil dihapus!', 'success')
+    return redirect(url_for('admin_tables'))
+
+@app.route('/admin/tables/<int:table_id>/toggle', methods=['POST'])
+@login_required
+@role_required('admin', 'manager')
+def admin_table_toggle(table_id):
+    """Toggle table status between available and occupied"""
+    table = Table.query.get_or_404(table_id)
+    
+    if table.status == 'available':
+        table.status = 'occupied'
+    else:
+        table.status = 'available'
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'status': table.status,
+        'message': f'Meja {table.number} status: {table.status}'
+    })
+
+# Kitchen Display for Cook
+@app.route('/kitchen')
+@login_required
+@role_required('admin', 'manager', 'koki')
+def kitchen():
+    """Kitchen display page for cooks"""
+    return render_template('kitchen.html')
+
+@app.route('/api/kitchen/orders')
+@login_required
+@role_required('admin', 'manager', 'koki', 'kasir')
+def api_kitchen_orders():
+    """Get orders for kitchen display"""
+    # Get orders from today that are not completed/cancelled
+    today = datetime.utcnow().date()
+    orders = Order.query.filter(
+        Order.created_at >= datetime.combine(today, datetime.min.time()),
+        Order.status.in_(['pending', 'processing'])
+    ).order_by(Order.created_at.asc()).all()
+    
+    result = []
+    for order in orders:
+        order_data = {
+            'id': order.id,
+            'order_number': order.order_number,
+            'table': order.table.number if order.table else 'Takeaway',
+            'customer_name': order.customer_name or 'Guest',
+            'order_type': order.order_type,
+            'status': order.status,
+            'created_at': order.created_at.strftime('%H:%M'),
+            'items': []
+        }
+        
+        for item in order.items:
+            order_data['items'].append({
+                'id': item.id,
+                'name': item.name,
+                'quantity': item.quantity,
+                'spice_level': item.spice_level,
+                'temperature': item.temperature,
+                'notes': item.notes,
+                'item_status': item.item_status or 'pending'
+            })
+        
+        result.append(order_data)
+    
+    return jsonify(result)
+
+@app.route('/api/kitchen/item/<int:item_id>/status', methods=['PUT'])
+@login_required
+@role_required('admin', 'manager', 'koki', 'kasir')
+def api_update_item_status(item_id):
+    """Update individual item status"""
+    item = OrderItem.query.get_or_404(item_id)
+    data = request.get_json()
+    new_status = data.get('status')
+    
+    if new_status not in ['pending', 'cooking', 'ready', 'served']:
+        return jsonify({'error': 'Invalid status'}), 400
+    
+    item.item_status = new_status
+    db.session.commit()
+    
+    # Check if all items in order are ready/served, update order status
+    order = item.order
+    all_items_status = [i.item_status for i in order.items]
+    
+    if all(s == 'served' for s in all_items_status):
+        order.status = 'completed'
+    elif all(s in ['ready', 'served'] for s in all_items_status):
+        order.status = 'processing'  # Ready to serve
+    elif any(s == 'cooking' for s in all_items_status):
+        order.status = 'processing'
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'item_id': item_id,
+        'status': new_status,
+        'order_status': order.status
+    })
+
+@app.route('/api/kitchen/order/<int:order_id>/status', methods=['PUT'])
+@login_required
+@role_required('admin', 'manager', 'koki', 'kasir')
+def api_update_order_kitchen_status(order_id):
+    """Update all items in an order to a status"""
+    order = Order.query.get_or_404(order_id)
+    data = request.get_json()
+    new_status = data.get('status')
+    
+    if new_status not in ['pending', 'cooking', 'ready', 'served']:
+        return jsonify({'error': 'Invalid status'}), 400
+    
+    # Update all items
+    for item in order.items:
+        item.item_status = new_status
+    
+    # Update order status
+    if new_status == 'served':
+        order.status = 'completed'
+    elif new_status in ['cooking', 'ready']:
+        order.status = 'processing'
+    else:
+        order.status = 'pending'
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'order_id': order_id,
+        'item_status': new_status,
+        'order_status': order.status
+    })
+
 # Reports
 @app.route('/reports')
 @login_required
@@ -1545,6 +1762,8 @@ if __name__ == '__main__':
     8. ✅ Admin Management
     9. ✅ Income Management
     10. ✅ Menu dari PDF Solaria
+    11. ✅ Kitchen Display untuk Koki
+    12. ✅ Manajemen Meja (Tambah/Hapus)
     
     📱 Modern UI dengan Tailwind CSS
     🎨 Glassmorphism Design
@@ -1553,6 +1772,7 @@ if __name__ == '__main__':
     👤 Default Login:
        Admin: admin / admin123
        Kasir: kasir / kasir123
+       Koki:  koki / koki123
     
     🌐 Server: http://localhost:8000
     """)
