@@ -1,4 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timezone
+
+
+def utc_now():
+    """Return current UTC time (timezone-aware)."""
+    return datetime.now(timezone.utc)
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -23,7 +28,7 @@ class Permission(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True, nullable=False)
     description = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
     
     def __repr__(self):
         return f'<Permission {self.name}>'
@@ -35,7 +40,7 @@ class Role(db.Model):
     name = db.Column(db.String(50), unique=True, nullable=False)
     description = db.Column(db.String(255))
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
     
     permissions = db.relationship('Permission', secondary=role_permissions, 
                                   backref=db.backref('roles', lazy='dynamic'))
@@ -57,8 +62,8 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(20))
     avatar = db.Column(db.String(255))
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     last_login = db.Column(db.DateTime)
     
     roles = db.relationship('Role', secondary=user_roles,
@@ -100,7 +105,7 @@ class Category(db.Model):
     icon = db.Column(db.String(50))
     order = db.Column(db.Integer, default=0)
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
     
     menu_items = db.relationship('MenuItem', backref='category', lazy='dynamic')
     
@@ -122,8 +127,8 @@ class MenuItem(db.Model):
     has_spicy_option = db.Column(db.Boolean, default=False)
     has_temperature_option = db.Column(db.Boolean, default=False)  # For drinks (hot/cold)
     stock = db.Column(db.Integer, default=100)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     
     def to_dict(self):
         return {
@@ -155,7 +160,7 @@ class Table(db.Model):
     qr_code = db.Column(db.String(255))
     status = db.Column(db.String(20), default='available')  # available, occupied, reserved
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
     
     orders = db.relationship('Order', backref='table', lazy='dynamic')
     
@@ -177,8 +182,8 @@ class Order(db.Model):
     discount = db.Column(db.Integer, default=0)
     total = db.Column(db.Integer, default=0)
     notes = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     
     items = db.relationship('OrderItem', backref='order', lazy='dynamic', cascade='all, delete-orphan')
     payment = db.relationship('Payment', backref='order', uselist=False, cascade='all, delete-orphan')
@@ -223,7 +228,7 @@ class OrderItem(db.Model):
     temperature = db.Column(db.String(20))  # hot, cold, normal
     notes = db.Column(db.Text)
     item_status = db.Column(db.String(20), default='pending')  # pending, cooking, ready, served
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
     
     menu_item = db.relationship('MenuItem')
     
@@ -259,7 +264,7 @@ class Payment(db.Model):
     midtrans_status = db.Column(db.String(50))
     snap_token = db.Column(db.String(255))  # Midtrans Snap token
     payment_url = db.Column(db.String(500))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
     paid_at = db.Column(db.DateTime)
     
     def to_dict(self):
@@ -291,8 +296,8 @@ class Income(db.Model):
     cash_income = db.Column(db.Integer, default=0)
     online_income = db.Column(db.Integer, default=0)
     notes = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     
     def __repr__(self):
         return f'<Income {self.date}>'
@@ -304,7 +309,7 @@ class Setting(db.Model):
     key = db.Column(db.String(100), unique=True, nullable=False)
     value = db.Column(db.Text)
     description = db.Column(db.String(255))
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     
     def __repr__(self):
         return f'<Setting {self.key}>'
@@ -319,8 +324,8 @@ class Cart(db.Model):
     table_id = db.Column(db.Integer, db.ForeignKey('tables.id'), nullable=True)
     order_type = db.Column(db.String(20), default='dine_in')
     customer_name = db.Column(db.String(100))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     
     items = db.relationship('CartItem', backref='cart', lazy='dynamic', cascade='all, delete-orphan')
     user = db.relationship('User', backref='carts')
@@ -369,8 +374,8 @@ class CartItem(db.Model):
     spice_level = db.Column(db.String(20))  # none, mild, medium, hot, extra_hot
     temperature = db.Column(db.String(20))  # hot, cold, normal
     notes = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     
     menu_item = db.relationship('MenuItem')
     

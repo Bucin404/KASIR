@@ -1,4 +1,9 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
+
+def utc_now():
+    """Return current UTC time (timezone-aware)."""
+    return datetime.now(timezone.utc)
 from functools import wraps
 import os
 import json
@@ -418,7 +423,7 @@ def login():
                 return render_template('auth/login.html')
             
             login_user(user, remember=remember)
-            user.last_login = datetime.utcnow()
+            user.last_login = utc_now()
             db.session.commit()
             
             next_page = request.args.get('next')
@@ -826,7 +831,7 @@ def api_create_order():
         )
         
         if is_cash_paid:
-            payment.paid_at = datetime.utcnow()
+            payment.paid_at = utc_now()
             order.status = 'processing'
         
         db.session.add(payment)
@@ -1030,7 +1035,7 @@ def api_midtrans_callback():
             
             if transaction_status in ['capture', 'settlement']:
                 payment.status = 'paid'
-                payment.paid_at = datetime.utcnow()
+                payment.paid_at = utc_now()
                 payment.order.status = 'processing'
             elif transaction_status in ['deny', 'cancel', 'expire']:
                 payment.status = 'failed'
@@ -1324,7 +1329,7 @@ def kitchen():
 def api_kitchen_orders():
     """Get orders for kitchen display"""
     # Get orders from today that are not completed/cancelled
-    today = datetime.utcnow().date()
+    today = utc_now().date()
     orders = Order.query.filter(
         Order.created_at >= datetime.combine(today, datetime.min.time()),
         Order.status.in_(['pending', 'processing'])
@@ -1668,7 +1673,7 @@ def update_payment_status(order_id):
     
     if status == 'paid':
         order.payment.status = 'paid'
-        order.payment.paid_at = datetime.utcnow()
+        order.payment.paid_at = utc_now()
         order.status = 'completed'
     elif status == 'pending':
         order.payment.status = 'pending'
