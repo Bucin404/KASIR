@@ -483,14 +483,6 @@ function updateCartUI() {
     updateTotals();
 }
 
-function updateQuantity(index, delta) {
-    cart[index].quantity += delta;
-    if (cart[index].quantity <= 0) {
-        cart.splice(index, 1);
-    }
-    updateCartUI();
-}
-
 // Remove item from cart via API
 async function removeFromCart(itemId) {
     try {
@@ -579,13 +571,25 @@ function setQuickCash(amount) {
 }
 
 function calculateChange() {
-    const total = cart.total || 0;
-    const paid = parseInt(document.getElementById('paid-amount').value) || 0;
-    const change = Math.max(0, paid - total);
+    // Ensure total is a number
+    const total = Number(cart.total) || 0;
+    // Get paid amount and clean it (remove any non-numeric characters except numbers)
+    const paidInput = document.getElementById('paid-amount').value.toString().replace(/[^\d]/g, '');
+    const paid = parseInt(paidInput) || 0;
+    const change = paid - total;
     
-    document.getElementById('change').textContent = formatCurrency(change);
-    document.getElementById('change').classList.toggle('text-red-400', paid < total && paid > 0);
-    document.getElementById('change').classList.toggle('text-green-400', paid >= total || paid === 0);
+    // Update change display
+    document.getElementById('change').textContent = formatCurrency(Math.max(0, change));
+    
+    // Update color based on status
+    if (paid === 0) {
+        document.getElementById('change').className = 'text-gray-400';
+    } else if (paid < total) {
+        document.getElementById('change').className = 'text-red-400';
+        document.getElementById('change').textContent = 'Kurang ' + formatCurrency(total - paid);
+    } else {
+        document.getElementById('change').className = 'text-green-400';
+    }
 }
 
 async function processCheckout() {
