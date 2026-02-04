@@ -5,30 +5,8 @@
 {% block body %}
 <div class="flex min-h-screen">
     <!-- Sidebar -->
-    <aside class="w-64 glass-dark fixed h-full z-40">
-        <div class="p-6">
-            <div class="flex items-center space-x-3 mb-8">
-                <img src="{{ url_for('static', filename='logo.png') }}" alt="Dapoer Teras Obor" class="w-10 h-10 rounded-xl object-contain">
-                <span class="text-xl font-display font-bold gradient-text">Dapoer Teras Obor</span>
-            </div>
-            <nav class="space-y-2">
-                <a href="{{ url_for('dashboard') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white">
-                    <i class="fas fa-home w-5"></i><span>Dashboard</span>
-                </a>
-                <a href="{{ url_for('admin_menu') }}" class="sidebar-link active flex items-center space-x-3 px-4 py-3 rounded-xl text-white">
-                    <i class="fas fa-utensils w-5"></i><span>Menu</span>
-                </a>
-                <a href="{{ url_for('admin_tables') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white">
-                    <i class="fas fa-chair w-5"></i><span>Meja & QR</span>
-                </a>
-                <div class="pt-4 mt-4 border-t border-white/10">
-                    <a href="{{ url_for('logout') }}" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-red-400 hover:text-red-300">
-                        <i class="fas fa-sign-out-alt w-5"></i><span>Logout</span>
-                    </a>
-                </div>
-            </nav>
-        </div>
-    </aside>
+    {% set active_page = 'admin_menu' %}
+    {% include 'partials/_sidebar.html' %}
     
     <main class="flex-1 ml-64 p-8">
         <header class="flex items-center justify-between mb-8">
