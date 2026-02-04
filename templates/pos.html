@@ -25,7 +25,7 @@
             <div class="flex-1 max-w-md mx-8">
                 <div class="relative">
                     <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                    <input type="text" id="search-menu" placeholder="Cari menu..." 
+                    <input type="text" id="search-menu" placeholder="Cari menu atau kode..." 
                            class="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-12 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500/50">
                 </div>
             </div>
@@ -68,6 +68,7 @@
                 <div class="menu-item menu-card glass-card rounded-2xl overflow-hidden cursor-pointer" 
                      data-id="{{ item.id }}"
                      data-name="{{ item.name }}"
+                     data-code="{{ item.code or '' }}"
                      data-price="{{ item.price }}"
                      data-category="{{ item.category_id }}"
                      data-spicy="{{ item.has_spicy_option|lower }}"
@@ -346,7 +347,9 @@ document.getElementById('search-menu').addEventListener('input', function(e) {
     const query = e.target.value.toLowerCase();
     document.querySelectorAll('.menu-item').forEach(item => {
         const name = item.dataset.name.toLowerCase();
-        item.style.display = name.includes(query) ? 'block' : 'none';
+        const code = (item.dataset.code || '').toLowerCase();
+        const matches = name.includes(query) || code.includes(query);
+        item.style.display = matches ? 'block' : 'none';
     });
 });
 
