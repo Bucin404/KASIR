@@ -899,10 +899,10 @@ function buildReceiptCommandsWithCopy(order, copyNum, totalCopies) {
     commands.push(...encoder.encode('================================'));
     commands.push(...ESC_POS.FEED_LINE);
     
-    // ASCII Art Logo
-    commands.push(...encoder.encode('    ★★★ KASIR POS ★★★'));
+    // ASCII Art Logo - Dapoer Teras Obor
+    commands.push(...encoder.encode(' ★ DAPOER TERAS OBOR ★'));
     commands.push(...ESC_POS.FEED_LINE);
-    commands.push(...encoder.encode('   Sistem Kasir Modern'));
+    commands.push(...encoder.encode('    Kuliner Nusantara'));
     commands.push(...ESC_POS.FEED_LINE);
     
     commands.push(...encoder.encode('================================'));
@@ -910,16 +910,11 @@ function buildReceiptCommandsWithCopy(order, copyNum, totalCopies) {
     commands.push(...ESC_POS.BOLD_OFF);
     commands.push(...ESC_POS.FEED_LINE);
     
-    // Restaurant Name
+    // Restaurant Info
     commands.push(...ESC_POS.BOLD_ON);
-    commands.push(...ESC_POS.DOUBLE_HEIGHT);
-    commands.push(...encoder.encode('Dapoer Teras Obor'));
-    commands.push(...ESC_POS.FEED_LINE);
-    
-    commands.push(...ESC_POS.NORMAL_SIZE);
-    commands.push(...ESC_POS.BOLD_OFF);
     commands.push(...encoder.encode('Jl. Rw. Belong, Jakarta Barat'));
     commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...ESC_POS.BOLD_OFF);
     commands.push(...encoder.encode('Telp: 021-XXXXXXX'));
     commands.push(...ESC_POS.FEED_LINE);
     commands.push(...ESC_POS.FEED_LINE);
@@ -1025,7 +1020,7 @@ function buildReceiptCommandsWithCopy(order, copyNum, totalCopies) {
     commands.push(...ESC_POS.FEED_LINE);
     
     // App branding
-    commands.push(...encoder.encode('~ Powered by KASIR POS ~'));
+    commands.push(...encoder.encode('~ Dapoer Teras Obor ~'));
     commands.push(...ESC_POS.FEED_LINE);
     commands.push(...encoder.encode(`Lembar ${copyNum}/${totalCopies} - ${copyLabel}`));
     commands.push(...ESC_POS.FEED_LINE);
