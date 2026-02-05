@@ -1237,6 +1237,13 @@ def admin_create_menu():
     flash('Menu berhasil ditambahkan!', 'success')
     return redirect(url_for('admin_menu'))
 
+@app.route('/admin/printer')
+@login_required
+@role_required('admin', 'manager')
+def admin_printer():
+    """Printer management page"""
+    return render_template('admin/printer.html')
+
 @app.route('/admin/tables')
 @login_required
 @role_required('admin', 'manager')
