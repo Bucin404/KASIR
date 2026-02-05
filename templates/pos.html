@@ -365,10 +365,42 @@ async function autoReconnectPrinter() {
                 statusBtn.innerHTML = `<i class="fas fa-print text-yellow-400 animate-pulse"></i> <span class="hidden lg:inline">Menghubungkan...</span>`;
             }
             
-            // Try to auto-connect (will prompt user for permission)
             console.log('Attempting to reconnect to:', data.printer_name);
-            // Note: Web Bluetooth requires user gesture to connect
-            // We show the last known printer so user can click to reconnect easily
+            
+            // Check if Web Bluetooth is supported
+            if (!navigator.bluetooth) {
+                console.log('Web Bluetooth not supported');
+                updatePrinterStatus(false, data.printer_name, true);
+                return;
+            }
+            
+            // Try to get previously paired devices (Chrome 85+)
+            if (navigator.bluetooth.getDevices) {
+                try {
+                    const devices = await navigator.bluetooth.getDevices();
+                    const savedDevice = devices.find(d => d.name === data.printer_name);
+                    
+                    if (savedDevice) {
+                        console.log('Found saved device, attempting reconnect...');
+                        statusBtn.innerHTML = `<i class="fas fa-print text-yellow-400 animate-pulse"></i> <span class="hidden lg:inline">Menghubungkan...</span>`;
+                        
+                        // Try to connect to saved device
+                        const server = await savedDevice.gatt.connect();
+                        const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
+                        printerCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
+                        connectedPrinter = savedDevice;
+                        
+                        console.log('Auto-reconnected to:', savedDevice.name);
+                        updatePrinterStatus(true, savedDevice.name);
+                        showToast('Printer terhubung otomatis!', 'success');
+                        return;
+                    }
+                } catch (reconnectError) {
+                    console.log('Auto-reconnect failed, showing last known:', reconnectError.message);
+                }
+            }
+            
+            // Show last known printer status (yellow) so user can click to reconnect
             updatePrinterStatus(false, data.printer_name, true);
         }
     } catch (error) {
