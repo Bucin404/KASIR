@@ -9,12 +9,29 @@ const PrinterManager = {
     characteristic: null,
     isConnected: false,
     printerName: null,
+    reconnectAttempts: 0,
+    maxReconnectAttempts: 5,
+    reconnectInterval: null,
     
     // Initialize printer manager
     async init() {
         console.log('PrinterManager: Initializing...');
         await this.loadSavedPrinter();
         this.updateStatusUI();
+        
+        // Start background reconnect checker
+        this.startReconnectChecker();
+    },
+    
+    // Start background reconnect checker
+    startReconnectChecker() {
+        // Check every 5 seconds if we need to reconnect
+        this.reconnectInterval = setInterval(async () => {
+            if (!this.isConnected && this.printerName && this.reconnectAttempts < this.maxReconnectAttempts) {
+                console.log('PrinterManager: Background reconnect attempt', this.reconnectAttempts + 1);
+                await this.autoReconnect();
+            }
+        }, 5000);
     },
     
     // Load saved printer from database and attempt auto-reconnect
@@ -26,7 +43,8 @@ const PrinterManager = {
                 if (data.printer_name) {
                     this.printerName = data.printer_name;
                     console.log('PrinterManager: Found saved printer:', this.printerName);
-                    // Attempt auto-reconnect
+                    // Attempt auto-reconnect immediately
+                    this.updateStatusUI('connecting');
                     await this.autoReconnect();
                 }
             }
@@ -37,65 +55,91 @@ const PrinterManager = {
     
     // Auto-reconnect to previously paired device
     async autoReconnect() {
-        if (!navigator.bluetooth || !navigator.bluetooth.getDevices) {
-            console.log('PrinterManager: getDevices() not supported, showing last known status');
+        if (!navigator.bluetooth) {
+            console.log('PrinterManager: Bluetooth not supported');
             this.updateStatusUI('lastknown');
-            return;
+            return false;
+        }
+        
+        // Check if getDevices is supported (Chrome 85+)
+        if (!navigator.bluetooth.getDevices) {
+            console.log('PrinterManager: getDevices() not supported - please click to connect manually');
+            this.updateStatusUI('lastknown');
+            return false;
         }
         
         try {
+            this.reconnectAttempts++;
             this.updateStatusUI('connecting');
             
             // Get previously paired devices
             const devices = await navigator.bluetooth.getDevices();
-            console.log('PrinterManager: Found paired devices:', devices.length);
+            console.log('PrinterManager: Found', devices.length, 'paired devices');
             
-            for (const device of devices) {
-                if (device.name === this.printerName) {
-                    console.log('PrinterManager: Found matching device, attempting reconnect...');
-                    
-                    // Try direct connection first
-                    try {
-                        await this.connectToDevice(device);
-                        return;
-                    } catch (e) {
-                        console.log('PrinterManager: Direct connection failed, trying watch advertisements');
+            // Find our printer
+            const matchingDevice = devices.find(d => d.name === this.printerName);
+            
+            if (matchingDevice) {
+                console.log('PrinterManager: Found matching device:', matchingDevice.name);
+                
+                // Try direct GATT connection
+                try {
+                    const connected = await this.connectToDevice(matchingDevice);
+                    if (connected) {
+                        this.reconnectAttempts = 0; // Reset on successful connection
+                        return true;
                     }
-                    
-                    // Listen for advertisement
-                    const abortController = new AbortController();
-                    
-                    device.addEventListener('advertisementreceived', async (event) => {
-                        console.log('PrinterManager: Advertisement received, connecting...');
-                        abortController.abort();
-                        await this.connectToDevice(device);
-                    });
-                    
-                    try {
-                        await device.watchAdvertisements({ signal: abortController.signal });
-                    } catch (error) {
-                        if (error.name !== 'AbortError') {
-                            console.error('PrinterManager: Watch advertisements error:', error);
-                        }
-                    }
-                    
-                    break;
+                } catch (e) {
+                    console.log('PrinterManager: Direct connection failed:', e.message);
+                }
+                
+                // Try watching for advertisements (device might be waking up)
+                try {
+                    await this.watchAndConnect(matchingDevice);
+                } catch (e) {
+                    console.log('PrinterManager: Watch advertisements failed:', e.message);
                 }
             }
             
-            // If no connection after 3 seconds, show last known status
-            setTimeout(() => {
-                if (!this.isConnected && this.printerName) {
-                    this.updateStatusUI('lastknown');
-                }
-            }, 3000);
+            // Show last known status if reconnect failed
+            if (!this.isConnected && this.printerName) {
+                this.updateStatusUI('lastknown');
+            }
+            
+            return false;
             
         } catch (error) {
             console.error('PrinterManager: Auto-reconnect error:', error);
             if (this.printerName) {
                 this.updateStatusUI('lastknown');
             }
+            return false;
         }
+    },
+    
+    // Watch for device advertisements and connect when available
+    async watchAndConnect(device) {
+        return new Promise((resolve, reject) => {
+            const abortController = new AbortController();
+            const timeout = setTimeout(() => {
+                abortController.abort();
+                resolve(false);
+            }, 3000);
+            
+            device.addEventListener('advertisementreceived', async (event) => {
+                console.log('PrinterManager: Advertisement received from', event.device.name);
+                clearTimeout(timeout);
+                abortController.abort();
+                const connected = await this.connectToDevice(device);
+                resolve(connected);
+            }, { once: true });
+            
+            device.watchAdvertisements({ signal: abortController.signal }).catch(e => {
+                if (e.name !== 'AbortError') {
+                    reject(e);
+                }
+            });
+        });
     },
     
     // Connect to a specific device
@@ -261,32 +305,67 @@ const PrinterManager = {
         const statusEl = document.getElementById('printer-status');
         const statusText = document.getElementById('printer-status-text');
         const statusDot = document.getElementById('printer-status-dot');
+        const actionBtn = document.getElementById('printer-action-btn');
+        const autoStatus = document.getElementById('printer-auto-status');
         
         if (!statusEl) return;
         
         statusEl.classList.remove('hidden');
         
-        switch (status || (this.isConnected ? 'connected' : 'disconnected')) {
+        const currentStatus = status || (this.isConnected ? 'connected' : 'disconnected');
+        
+        switch (currentStatus) {
             case 'connected':
                 statusDot.className = 'w-2 h-2 rounded-full bg-green-500';
                 statusText.textContent = this.printerName || 'Terhubung';
                 statusText.className = 'text-xs text-green-600 truncate max-w-24';
+                if (actionBtn) {
+                    actionBtn.textContent = 'Putuskan';
+                    actionBtn.className = 'text-xs px-2 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors';
+                }
+                if (autoStatus) autoStatus.classList.add('hidden');
                 break;
             case 'connecting':
                 statusDot.className = 'w-2 h-2 rounded-full bg-yellow-500 animate-pulse';
                 statusText.textContent = 'Menghubungkan...';
                 statusText.className = 'text-xs text-yellow-600 truncate max-w-24';
+                if (actionBtn) {
+                    actionBtn.textContent = 'Menunggu...';
+                    actionBtn.className = 'text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400';
+                }
+                if (autoStatus) {
+                    autoStatus.textContent = `Auto-reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`;
+                    autoStatus.classList.remove('hidden');
+                }
                 break;
             case 'lastknown':
                 statusDot.className = 'w-2 h-2 rounded-full bg-yellow-500';
-                statusText.textContent = this.printerName || 'Klik untuk hubungkan';
+                statusText.textContent = this.printerName || 'Terakhir terhubung';
                 statusText.className = 'text-xs text-yellow-600 truncate max-w-24';
+                if (actionBtn) {
+                    actionBtn.textContent = 'Hubungkan';
+                    actionBtn.className = 'text-xs px-2 py-1 rounded bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors';
+                }
+                if (autoStatus) {
+                    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                        autoStatus.textContent = 'Auto-reconnect aktif...';
+                        autoStatus.classList.remove('hidden');
+                    } else {
+                        autoStatus.textContent = 'Klik tombol untuk hubungkan manual';
+                        autoStatus.classList.remove('hidden');
+                    }
+                }
                 break;
             case 'disconnected':
             default:
                 statusDot.className = 'w-2 h-2 rounded-full bg-gray-400';
                 statusText.textContent = 'Tidak terhubung';
                 statusText.className = 'text-xs text-gray-500 truncate max-w-24';
+                if (actionBtn) {
+                    actionBtn.textContent = 'Hubungkan';
+                    actionBtn.className = 'text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors';
+                }
+                if (autoStatus) autoStatus.classList.add('hidden');
                 break;
         }
     },
@@ -339,3 +418,15 @@ const PrinterManager = {
 document.addEventListener('DOMContentLoaded', () => {
     PrinterManager.init();
 });
+
+// Also try to reconnect when page becomes visible (user returns to tab)
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && !PrinterManager.isConnected && PrinterManager.printerName) {
+        console.log('PrinterManager: Page visible, attempting reconnect...');
+        PrinterManager.reconnectAttempts = 0;
+        PrinterManager.autoReconnect();
+    }
+});
+
+// Expose PrinterManager globally
+window.PrinterManager = PrinterManager;
