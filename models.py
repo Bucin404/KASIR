@@ -398,3 +398,80 @@ class CartItem(db.Model):
     
     def __repr__(self):
         return f'<CartItem {self.name} x{self.quantity}>'
+
+
+class Discount(db.Model):
+    """Discount and promo model"""
+    __tablename__ = 'discounts'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    code = db.Column(db.String(50), unique=True, nullable=False)  # Promo code
+    description = db.Column(db.Text)
+    discount_type = db.Column(db.String(20), default='percentage')  # percentage, fixed
+    value = db.Column(db.Integer, nullable=False)  # Percentage (0-100) or fixed amount
+    min_purchase = db.Column(db.Integer, default=0)  # Minimum purchase amount to apply
+    max_discount = db.Column(db.Integer, nullable=True)  # Maximum discount for percentage type
+    usage_limit = db.Column(db.Integer, nullable=True)  # Total usage limit (null = unlimited)
+    usage_count = db.Column(db.Integer, default=0)  # Current usage count
+    start_date = db.Column(db.DateTime, nullable=True)  # Start date for promo
+    end_date = db.Column(db.DateTime, nullable=True)  # End date for promo
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
+    
+    def is_valid(self, subtotal=0):
+        """Check if discount is valid for the given subtotal"""
+        now = utc_now()
+        
+        # Check if active
+        if not self.is_active:
+            return False, "Promo tidak aktif"
+        
+        # Check date range
+        if self.start_date and now < self.start_date:
+            return False, "Promo belum dimulai"
+        if self.end_date and now > self.end_date:
+            return False, "Promo sudah berakhir"
+        
+        # Check usage limit
+        if self.usage_limit and self.usage_count >= self.usage_limit:
+            return False, "Promo sudah mencapai batas penggunaan"
+        
+        # Check minimum purchase
+        if subtotal < self.min_purchase:
+            return False, f"Minimum pembelian Rp {self.min_purchase:,}".replace(",", ".")
+        
+        return True, "Valid"
+    
+    def calculate_discount(self, subtotal):
+        """Calculate discount amount for given subtotal"""
+        if self.discount_type == 'percentage':
+            discount = int(subtotal * self.value / 100)
+            # Apply max discount cap if set
+            if self.max_discount and discount > self.max_discount:
+                discount = self.max_discount
+            return discount
+        else:  # fixed
+            return min(self.value, subtotal)  # Can't discount more than subtotal
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'code': self.code,
+            'description': self.description,
+            'discount_type': self.discount_type,
+            'value': self.value,
+            'min_purchase': self.min_purchase,
+            'max_discount': self.max_discount,
+            'usage_limit': self.usage_limit,
+            'usage_count': self.usage_count,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'is_active': self.is_active,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+    
+    def __repr__(self):
+        return f'<Discount {self.code}>'

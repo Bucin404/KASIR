@@ -155,6 +155,27 @@
                 <span class="text-gray-400">Subtotal</span>
                 <span id="subtotal">Rp 0</span>
             </div>
+            
+            <!-- Discount/Promo Section -->
+            <div class="border border-dashed border-white/20 rounded-lg p-2" id="promo-section">
+                <div class="flex space-x-2">
+                    <input type="text" id="promo-code" placeholder="Kode promo" 
+                           class="flex-1 bg-white/5 border border-white/10 rounded-lg py-1.5 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 uppercase"
+                           oninput="this.value = this.value.toUpperCase()">
+                    <button onclick="applyPromo()" class="px-3 py-1.5 rounded-lg bg-primary-500/20 text-primary-400 text-sm hover:bg-primary-500/30">
+                        <i class="fas fa-tag mr-1"></i>Apply
+                    </button>
+                </div>
+                <div id="promo-result" class="hidden mt-2 p-2 rounded-lg text-sm">
+                    <!-- Promo result will appear here -->
+                </div>
+            </div>
+            
+            <div class="flex justify-between text-sm text-green-400" id="discount-row" style="display: none;">
+                <span>Diskon <span id="discount-name"></span></span>
+                <span id="discount-amount">- Rp 0</span>
+            </div>
+            
             <div class="flex justify-between text-sm">
                 <span class="text-gray-400">Pajak (10%)</span>
                 <span id="tax">Rp 0</span>
@@ -297,6 +318,7 @@
 let cart = { items: [], subtotal: 0, tax: 0, total: 0 };
 let paymentMethod = 'cash';
 let currentItem = null;
+let appliedDiscount = null; // Store applied discount
 let selectedSpice = 'none';
 let selectedTemp = 'normal';
 
@@ -514,6 +536,7 @@ async function clearCart() {
         const result = await response.json();
         if (result.success) {
             cart = result.cart;
+            clearPromo(); // Also clear any applied promo
             updateCartUI();
         }
     } catch (error) {
@@ -552,11 +575,80 @@ async function updateQuantity(itemId, delta) {
 function updateTotals() {
     document.getElementById('subtotal').textContent = formatCurrency(cart.subtotal || 0);
     document.getElementById('tax').textContent = formatCurrency(cart.tax || 0);
-    document.getElementById('total').textContent = formatCurrency(cart.total || 0);
+    
+    // Calculate discount and update total
+    let finalTotal = cart.total || 0;
+    if (appliedDiscount) {
+        const discountAmount = appliedDiscount.discount_amount;
+        document.getElementById('discount-row').style.display = 'flex';
+        document.getElementById('discount-name').textContent = `(${appliedDiscount.discount.code})`;
+        document.getElementById('discount-amount').textContent = `- ${formatCurrency(discountAmount)}`;
+        finalTotal = Math.max(0, (cart.subtotal || 0) - discountAmount + (cart.tax || 0));
+    } else {
+        document.getElementById('discount-row').style.display = 'none';
+    }
+    
+    document.getElementById('total').textContent = formatCurrency(finalTotal);
     
     document.getElementById('checkout-btn').disabled = !cart.items || cart.items.length === 0;
     
     calculateChange();
+}
+
+// Apply promo code
+async function applyPromo() {
+    const code = document.getElementById('promo-code').value.trim().toUpperCase();
+    const resultDiv = document.getElementById('promo-result');
+    
+    if (!code) {
+        resultDiv.innerHTML = '<span class="text-yellow-400"><i class="fas fa-exclamation-circle mr-1"></i>Masukkan kode promo</span>';
+        resultDiv.className = 'mt-2 p-2 rounded-lg text-sm bg-yellow-500/10';
+        resultDiv.classList.remove('hidden');
+        return;
+    }
+    
+    if (!cart.subtotal || cart.subtotal === 0) {
+        resultDiv.innerHTML = '<span class="text-yellow-400"><i class="fas fa-exclamation-circle mr-1"></i>Keranjang masih kosong</span>';
+        resultDiv.className = 'mt-2 p-2 rounded-lg text-sm bg-yellow-500/10';
+        resultDiv.classList.remove('hidden');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/discount/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: code, subtotal: cart.subtotal })
+        });
+        const result = await response.json();
+        
+        if (result.valid) {
+            appliedDiscount = result;
+            resultDiv.innerHTML = `<span class="text-green-400"><i class="fas fa-check-circle mr-1"></i>${result.message} (-${formatCurrency(result.discount_amount)})</span>`;
+            resultDiv.className = 'mt-2 p-2 rounded-lg text-sm bg-green-500/10';
+            document.getElementById('promo-code').disabled = true;
+            updateTotals();
+        } else {
+            resultDiv.innerHTML = `<span class="text-red-400"><i class="fas fa-times-circle mr-1"></i>${result.message}</span>`;
+            resultDiv.className = 'mt-2 p-2 rounded-lg text-sm bg-red-500/10';
+        }
+        resultDiv.classList.remove('hidden');
+    } catch (error) {
+        console.error('Error validating promo:', error);
+        resultDiv.innerHTML = '<span class="text-red-400"><i class="fas fa-times-circle mr-1"></i>Gagal memvalidasi kode promo</span>';
+        resultDiv.className = 'mt-2 p-2 rounded-lg text-sm bg-red-500/10';
+        resultDiv.classList.remove('hidden');
+    }
+}
+
+// Clear promo
+function clearPromo() {
+    appliedDiscount = null;
+    document.getElementById('promo-code').value = '';
+    document.getElementById('promo-code').disabled = false;
+    document.getElementById('promo-result').classList.add('hidden');
+    document.getElementById('discount-row').style.display = 'none';
+    updateTotals();
 }
 
 function setPaymentMethod(method) {
@@ -601,10 +693,18 @@ function calculateChange() {
 async function processCheckout() {
     if (!cart.items || cart.items.length === 0) return;
     
-    const total = cart.total || 0;
+    // Calculate final total with discount
+    let finalTotal = cart.total || 0;
+    let discountAmount = 0;
+    
+    if (appliedDiscount) {
+        discountAmount = appliedDiscount.discount_amount;
+        finalTotal = Math.max(0, (cart.subtotal || 0) - discountAmount + (cart.tax || 0));
+    }
+    
     const paid = parseInt(document.getElementById('paid-amount').value) || 0;
     
-    if (paymentMethod === 'cash' && paid < total) {
+    if (paymentMethod === 'cash' && paid < finalTotal) {
         alert('Jumlah bayar kurang!');
         return;
     }
@@ -615,7 +715,9 @@ async function processCheckout() {
         order_type: document.getElementById('order-type').value,
         customer_name: document.getElementById('customer-name').value,
         payment_method: paymentMethod,
-        paid_amount: paid
+        paid_amount: paid,
+        discount: discountAmount,
+        discount_code: appliedDiscount ? appliedDiscount.discount.code : null
     };
     
     try {

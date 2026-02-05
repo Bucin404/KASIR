@@ -53,6 +53,11 @@
                     <i class="fas fa-chair w-5"></i>
                     <span>Meja</span>
                 </a>
+                
+                <a href="{{ url_for('admin_discounts') }}" class="sidebar-link {% if active_page == 'admin_discounts' %}active{% endif %} flex items-center space-x-3 px-4 py-3 rounded-xl {% if active_page == 'admin_discounts' %}text-white{% else %}text-gray-400 hover:text-white{% endif %}">
+                    <i class="fas fa-tag w-5"></i>
+                    <span>Diskon & Promo</span>
+                </a>
             </div>
             {% endif %}
             

@@ -16,7 +16,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from werkzeug.utils import secure_filename
 
 from config import config
-from models import db, User, Role, Permission, Category, MenuItem, Table, Order, OrderItem, Payment, Income, Setting, Cart, CartItem
+from models import db, User, Role, Permission, Category, MenuItem, Table, Order, OrderItem, Payment, Income, Setting, Cart, CartItem, Discount
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -819,14 +819,29 @@ def api_create_order():
         # Calculate totals
         order.calculate_totals()
         
+        # Apply discount if provided
+        discount_amount = data.get('discount', 0)
+        discount_code = data.get('discount_code')
+        
+        if discount_amount > 0 and discount_code:
+            # Find and update discount usage
+            discount = Discount.query.filter_by(code=discount_code).first()
+            if discount:
+                discount.usage_count += 1
+            
+            # Apply discount to order
+            order.discount = discount_amount
+            order.total = max(0, order.subtotal - discount_amount + order.tax)
+        
         # Create payment record
-        is_cash_paid = payment_method == 'cash' and paid_amount >= order.total
+        final_total = order.total
+        is_cash_paid = payment_method == 'cash' and paid_amount >= final_total
         payment = Payment(
             order_id=order.id,
             payment_method=payment_method,
-            amount=order.total,
+            amount=final_total,
             paid_amount=paid_amount if payment_method == 'cash' else 0,
-            change_amount=max(0, paid_amount - order.total) if payment_method == 'cash' else 0,
+            change_amount=max(0, paid_amount - final_total) if payment_method == 'cash' else 0,
             status='paid' if is_cash_paid else 'pending'
         )
         
@@ -1314,6 +1329,196 @@ def admin_table_toggle(table_id):
         'status': table.status,
         'message': f'Meja {table.number} status: {table.status}'
     })
+
+
+# ========== DISCOUNT/PROMO MANAGEMENT ==========
+@app.route('/admin/discounts')
+@login_required
+@role_required('admin', 'manager')
+def admin_discounts():
+    """Discount management page"""
+    discounts = Discount.query.order_by(Discount.created_at.desc()).all()
+    return render_template('admin/discounts.html', discounts=discounts)
+
+
+@app.route('/admin/discounts/create', methods=['POST'])
+@login_required
+@role_required('admin', 'manager')
+def admin_discount_create():
+    """Create new discount/promo"""
+    try:
+        name = request.form.get('name')
+        code = request.form.get('code', '').upper().strip()
+        description = request.form.get('description', '')
+        discount_type = request.form.get('discount_type', 'percentage')
+        value = int(request.form.get('value', 0))
+        min_purchase = int(request.form.get('min_purchase', 0))
+        max_discount = request.form.get('max_discount')
+        usage_limit = request.form.get('usage_limit')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        is_active = request.form.get('is_active') == 'on'
+        
+        # Validate required fields
+        if not name or not code or value <= 0:
+            flash('Nama, kode, dan nilai diskon harus diisi dengan benar', 'danger')
+            return redirect(url_for('admin_discounts'))
+        
+        # Check if code already exists
+        existing = Discount.query.filter_by(code=code).first()
+        if existing:
+            flash(f'Kode promo "{code}" sudah digunakan', 'danger')
+            return redirect(url_for('admin_discounts'))
+        
+        # Parse optional fields
+        max_discount = int(max_discount) if max_discount else None
+        usage_limit = int(usage_limit) if usage_limit else None
+        start_date = datetime.fromisoformat(start_date) if start_date else None
+        end_date = datetime.fromisoformat(end_date) if end_date else None
+        
+        discount = Discount(
+            name=name,
+            code=code,
+            description=description,
+            discount_type=discount_type,
+            value=value,
+            min_purchase=min_purchase,
+            max_discount=max_discount,
+            usage_limit=usage_limit,
+            start_date=start_date,
+            end_date=end_date,
+            is_active=is_active
+        )
+        
+        db.session.add(discount)
+        db.session.commit()
+        
+        flash(f'Promo "{name}" berhasil ditambahkan', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Gagal menambahkan promo: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_discounts'))
+
+
+@app.route('/admin/discounts/<int:discount_id>/edit', methods=['POST'])
+@login_required
+@role_required('admin', 'manager')
+def admin_discount_edit(discount_id):
+    """Edit existing discount"""
+    discount = Discount.query.get_or_404(discount_id)
+    
+    try:
+        discount.name = request.form.get('name', discount.name)
+        discount.description = request.form.get('description', '')
+        discount.discount_type = request.form.get('discount_type', discount.discount_type)
+        discount.value = int(request.form.get('value', discount.value))
+        discount.min_purchase = int(request.form.get('min_purchase', 0))
+        
+        max_discount = request.form.get('max_discount')
+        discount.max_discount = int(max_discount) if max_discount else None
+        
+        usage_limit = request.form.get('usage_limit')
+        discount.usage_limit = int(usage_limit) if usage_limit else None
+        
+        start_date = request.form.get('start_date')
+        discount.start_date = datetime.fromisoformat(start_date) if start_date else None
+        
+        end_date = request.form.get('end_date')
+        discount.end_date = datetime.fromisoformat(end_date) if end_date else None
+        
+        discount.is_active = request.form.get('is_active') == 'on'
+        
+        db.session.commit()
+        flash(f'Promo "{discount.name}" berhasil diperbarui', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Gagal memperbarui promo: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_discounts'))
+
+
+@app.route('/admin/discounts/<int:discount_id>/delete', methods=['POST'])
+@login_required
+@role_required('admin', 'manager')
+def admin_discount_delete(discount_id):
+    """Delete a discount"""
+    discount = Discount.query.get_or_404(discount_id)
+    
+    try:
+        name = discount.name
+        db.session.delete(discount)
+        db.session.commit()
+        flash(f'Promo "{name}" berhasil dihapus', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Gagal menghapus promo: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_discounts'))
+
+
+@app.route('/admin/discounts/<int:discount_id>/toggle', methods=['POST'])
+@login_required
+@role_required('admin', 'manager')
+def admin_discount_toggle(discount_id):
+    """Toggle discount active status"""
+    discount = Discount.query.get_or_404(discount_id)
+    discount.is_active = not discount.is_active
+    db.session.commit()
+    
+    status = "aktif" if discount.is_active else "nonaktif"
+    return jsonify({
+        'success': True,
+        'is_active': discount.is_active,
+        'message': f'Promo "{discount.name}" sekarang {status}'
+    })
+
+
+@app.route('/api/discount/validate', methods=['POST'])
+@login_required
+def api_validate_discount():
+    """Validate a discount code for given subtotal"""
+    data = request.get_json()
+    code = data.get('code', '').upper().strip()
+    subtotal = int(data.get('subtotal', 0))
+    
+    if not code:
+        return jsonify({'valid': False, 'message': 'Kode promo tidak boleh kosong'})
+    
+    discount = Discount.query.filter_by(code=code).first()
+    if not discount:
+        return jsonify({'valid': False, 'message': 'Kode promo tidak ditemukan'})
+    
+    is_valid, message = discount.is_valid(subtotal)
+    if not is_valid:
+        return jsonify({'valid': False, 'message': message})
+    
+    discount_amount = discount.calculate_discount(subtotal)
+    
+    return jsonify({
+        'valid': True,
+        'message': 'Promo berhasil digunakan!',
+        'discount': discount.to_dict(),
+        'discount_amount': discount_amount
+    })
+
+
+@app.route('/api/discounts/active')
+@login_required
+def api_active_discounts():
+    """Get all currently active discounts"""
+    now = utc_now()
+    discounts = Discount.query.filter(
+        Discount.is_active == True,
+        (Discount.start_date == None) | (Discount.start_date <= now),
+        (Discount.end_date == None) | (Discount.end_date >= now),
+        (Discount.usage_limit == None) | (Discount.usage_count < Discount.usage_limit)
+    ).all()
+    
+    return jsonify({
+        'discounts': [d.to_dict() for d in discounts]
+    })
+
 
 # Kitchen Display for Cook
 @app.route('/kitchen')
