@@ -783,6 +783,62 @@ function showReceipt(order) {
     clearCart();
 }
 
+// ============================================
+// PRINT QUEUE SYSTEM - Mencegah konflik printer
+// ============================================
+class PrintQueue {
+    constructor() {
+        this.queue = [];
+        this.isProcessing = false;
+    }
+    
+    // Tambah job ke antrian
+    add(printJob) {
+        this.queue.push(printJob);
+        console.log(`[PrintQueue] Job ditambahkan. Antrian: ${this.queue.length}`);
+        this.process();
+    }
+    
+    // Proses antrian
+    async process() {
+        if (this.isProcessing || this.queue.length === 0) {
+            return;
+        }
+        
+        this.isProcessing = true;
+        
+        while (this.queue.length > 0) {
+            const job = this.queue.shift();
+            console.log(`[PrintQueue] Memproses job. Sisa antrian: ${this.queue.length}`);
+            
+            try {
+                await job();
+            } catch (error) {
+                console.error('[PrintQueue] Error:', error);
+            }
+            
+            // Delay 1 detik antar job untuk mencegah bentrok
+            if (this.queue.length > 0) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+        
+        this.isProcessing = false;
+        console.log('[PrintQueue] Semua job selesai');
+    }
+    
+    // Cek status
+    get status() {
+        return {
+            isProcessing: this.isProcessing,
+            queueLength: this.queue.length
+        };
+    }
+}
+
+// Global print queue instance
+const printQueue = new PrintQueue();
+
 // AUTO PRINT 3x - Print receipt 3 times (3 layer) via Bluetooth
 async function autoPrintReceipt3x(order) {
     // Check if printer is connected
@@ -791,52 +847,70 @@ async function autoPrintReceipt3x(order) {
         return;
     }
     
-    showToast('Mencetak struk 3 lembar...', 'info');
-    
-    try {
-        for (let i = 1; i <= 3; i++) {
-            // Build receipt with copy number
-            const commands = buildReceiptCommandsWithCopy(order, i, 3);
-            
-            // Send commands in chunks (BLE has packet size limits)
-            const chunkSize = 100;
-            for (let j = 0; j < commands.length; j += chunkSize) {
-                const chunk = commands.slice(j, j + chunkSize);
-                await printerCharacteristic.writeValue(new Uint8Array(chunk));
-                // Small delay between chunks
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
-            
-            // Delay 500ms between prints to prevent overlap
-            if (i < 3) {
-                await new Promise(resolve => setTimeout(resolve, 500));
-            }
-        }
+    // Tambahkan ke print queue untuk mencegah konflik
+    printQueue.add(async () => {
+        showToast('Mencetak struk 3 lembar...', 'info');
         
-        showToast('Struk berhasil dicetak 3 lembar!', 'success');
-    } catch (error) {
-        console.error('Auto print error:', error);
-        showToast('Gagal mencetak otomatis: ' + error.message, 'error');
-    }
+        try {
+            for (let i = 1; i <= 3; i++) {
+                // Build receipt with copy number and fancy design
+                const commands = buildReceiptCommandsWithCopy(order, i, 3);
+                
+                // Send commands in chunks (BLE has packet size limits)
+                const chunkSize = 100;
+                for (let j = 0; j < commands.length; j += chunkSize) {
+                    const chunk = commands.slice(j, j + chunkSize);
+                    await printerCharacteristic.writeValue(new Uint8Array(chunk));
+                    // Small delay between chunks
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+                
+                // Delay 800ms between prints to prevent overlap
+                if (i < 3) {
+                    await new Promise(resolve => setTimeout(resolve, 800));
+                }
+            }
+            
+            showToast('Struk berhasil dicetak 3 lembar!', 'success');
+        } catch (error) {
+            console.error('Auto print error:', error);
+            showToast('Gagal mencetak otomatis: ' + error.message, 'error');
+        }
+    });
 }
 
-// Build ESC/POS receipt commands with copy number
+// Build ESC/POS receipt commands with copy number and FANCY DESIGN
 function buildReceiptCommandsWithCopy(order, copyNum, totalCopies) {
     const encoder = new TextEncoder();
     let commands = [];
     
+    // Label untuk tiap lembar
+    const copyLabels = ['Kasir', 'Pelanggan', 'Dapur'];
+    const copyLabel = copyLabels[copyNum - 1] || `Copy ${copyNum}`;
+    
     // Initialize printer
     commands.push(...ESC_POS.INIT);
     
-    // Copy indicator at top
+    // ========== HEADER LOGO - FANCY DESIGN ==========
     commands.push(...ESC_POS.ALIGN_CENTER);
     commands.push(...ESC_POS.BOLD_ON);
-    commands.push(...encoder.encode(`[ Lembar ${copyNum}/${totalCopies} ]`));
+    
+    // Top border
+    commands.push(...encoder.encode('================================'));
+    commands.push(...ESC_POS.FEED_LINE);
+    
+    // ASCII Art Logo
+    commands.push(...encoder.encode('    ★★★ KASIR POS ★★★'));
+    commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...encoder.encode('   Sistem Kasir Modern'));
+    commands.push(...ESC_POS.FEED_LINE);
+    
+    commands.push(...encoder.encode('================================'));
     commands.push(...ESC_POS.FEED_LINE);
     commands.push(...ESC_POS.BOLD_OFF);
     commands.push(...ESC_POS.FEED_LINE);
     
-    // Header - Center aligned, bold
+    // Restaurant Name
     commands.push(...ESC_POS.BOLD_ON);
     commands.push(...ESC_POS.DOUBLE_HEIGHT);
     commands.push(...encoder.encode('Dapoer Teras Obor'));
@@ -846,23 +920,46 @@ function buildReceiptCommandsWithCopy(order, copyNum, totalCopies) {
     commands.push(...ESC_POS.BOLD_OFF);
     commands.push(...encoder.encode('Jl. Rw. Belong, Jakarta Barat'));
     commands.push(...ESC_POS.FEED_LINE);
-    commands.push(...encoder.encode('================================'));
+    commands.push(...encoder.encode('Telp: 021-XXXXXXX'));
+    commands.push(...ESC_POS.FEED_LINE);
     commands.push(...ESC_POS.FEED_LINE);
     
-    // Order info
-    commands.push(...ESC_POS.ALIGN_LEFT);
-    commands.push(...encoder.encode(`No: ${order.order_number || 'N/A'}`));
+    // ========== COPY INDICATOR ==========
+    commands.push(...ESC_POS.BOLD_ON);
+    commands.push(...encoder.encode(`>>> Lembar ${copyNum}/${totalCopies} - ${copyLabel} <<<`));
     commands.push(...ESC_POS.FEED_LINE);
-    commands.push(...encoder.encode(`Waktu: ${new Date().toLocaleString('id-ID')}`));
-    commands.push(...ESC_POS.FEED_LINE);
-    if (order.table) {
-        commands.push(...encoder.encode(`Meja: ${order.table}`));
-        commands.push(...ESC_POS.FEED_LINE);
-    }
+    commands.push(...ESC_POS.BOLD_OFF);
+    
     commands.push(...encoder.encode('--------------------------------'));
     commands.push(...ESC_POS.FEED_LINE);
     
-    // Items
+    // ========== ORDER INFO ==========
+    commands.push(...ESC_POS.ALIGN_LEFT);
+    commands.push(...encoder.encode(`No Order : ${order.order_number || 'N/A'}`));
+    commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...encoder.encode(`Tanggal  : ${new Date().toLocaleDateString('id-ID')}`));
+    commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...encoder.encode(`Jam      : ${new Date().toLocaleTimeString('id-ID')}`));
+    commands.push(...ESC_POS.FEED_LINE);
+    if (order.table) {
+        commands.push(...encoder.encode(`Meja     : ${order.table}`));
+        commands.push(...ESC_POS.FEED_LINE);
+    }
+    commands.push(...encoder.encode(`Kasir    : {{ current_user.username }}`));
+    commands.push(...ESC_POS.FEED_LINE);
+    
+    commands.push(...encoder.encode('--------------------------------'));
+    commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...ESC_POS.ALIGN_CENTER);
+    commands.push(...ESC_POS.BOLD_ON);
+    commands.push(...encoder.encode('DETAIL PESANAN'));
+    commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...ESC_POS.BOLD_OFF);
+    commands.push(...encoder.encode('--------------------------------'));
+    commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...ESC_POS.ALIGN_LEFT);
+    
+    // ========== ITEMS ==========
     if (order.items && order.items.length > 0) {
         for (const item of order.items) {
             const name = item.name.substring(0, 20);
@@ -871,7 +968,7 @@ function buildReceiptCommandsWithCopy(order, copyNum, totalCopies) {
             
             commands.push(...encoder.encode(name));
             commands.push(...ESC_POS.FEED_LINE);
-            commands.push(...encoder.encode(`  ${qty}            Rp ${price}`));
+            commands.push(...encoder.encode(`   ${qty}           Rp ${price}`));
             commands.push(...ESC_POS.FEED_LINE);
         }
     }
@@ -879,7 +976,7 @@ function buildReceiptCommandsWithCopy(order, copyNum, totalCopies) {
     commands.push(...encoder.encode('--------------------------------'));
     commands.push(...ESC_POS.FEED_LINE);
     
-    // Totals
+    // ========== TOTALS ==========
     const pad = (label, value) => {
         const space = 32 - label.length - value.length;
         return label + ' '.repeat(Math.max(1, space)) + value;
@@ -890,28 +987,49 @@ function buildReceiptCommandsWithCopy(order, copyNum, totalCopies) {
     commands.push(...encoder.encode(pad('Pajak (10%):', `Rp ${formatNumber(order.tax || 0)}`)));
     commands.push(...ESC_POS.FEED_LINE);
     
+    commands.push(...encoder.encode('================================'));
+    commands.push(...ESC_POS.FEED_LINE);
     commands.push(...ESC_POS.BOLD_ON);
+    commands.push(...ESC_POS.DOUBLE_HEIGHT);
     commands.push(...encoder.encode(pad('TOTAL:', `Rp ${formatNumber(order.total || 0)}`)));
     commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...ESC_POS.NORMAL_SIZE);
     commands.push(...ESC_POS.BOLD_OFF);
+    commands.push(...encoder.encode('================================'));
+    commands.push(...ESC_POS.FEED_LINE);
     
+    // ========== PAYMENT INFO ==========
     if (order.payment) {
         commands.push(...encoder.encode(pad('Bayar:', `Rp ${formatNumber(order.payment.paid_amount || 0)}`)));
         commands.push(...ESC_POS.FEED_LINE);
         commands.push(...encoder.encode(pad('Kembalian:', `Rp ${formatNumber(order.payment.change_amount || 0)}`)));
         commands.push(...ESC_POS.FEED_LINE);
+        commands.push(...encoder.encode(`Metode: ${order.payment.payment_method || 'Cash'}`));
+        commands.push(...ESC_POS.FEED_LINE);
     }
     
-    commands.push(...encoder.encode('================================'));
+    commands.push(...encoder.encode('--------------------------------'));
     commands.push(...ESC_POS.FEED_LINE);
     
-    // Footer
+    // ========== FOOTER - THANK YOU ==========
     commands.push(...ESC_POS.ALIGN_CENTER);
-    commands.push(...encoder.encode('Terima kasih atas kunjungan Anda!'));
     commands.push(...ESC_POS.FEED_LINE);
-    commands.push(...encoder.encode('Selamat menikmati'));
+    commands.push(...ESC_POS.BOLD_ON);
+    commands.push(...encoder.encode('★ TERIMA KASIH ★'));
     commands.push(...ESC_POS.FEED_LINE);
-    commands.push(...encoder.encode(`[ Lembar ${copyNum}/${totalCopies} ]`));
+    commands.push(...ESC_POS.BOLD_OFF);
+    commands.push(...encoder.encode('Atas Kunjungan Anda'));
+    commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...encoder.encode('Selamat Menikmati Hidangan'));
+    commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...ESC_POS.FEED_LINE);
+    
+    // App branding
+    commands.push(...encoder.encode('~ Powered by KASIR POS ~'));
+    commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...encoder.encode(`Lembar ${copyNum}/${totalCopies} - ${copyLabel}`));
+    commands.push(...ESC_POS.FEED_LINE);
+    commands.push(...encoder.encode('================================'));
     commands.push(...ESC_POS.FEED_LINES(4));
     
     // Cut paper
