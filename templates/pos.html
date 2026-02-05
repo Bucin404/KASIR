@@ -320,7 +320,10 @@ async function loadCart() {
 }
 
 // Initialize cart on page load
-document.addEventListener('DOMContentLoaded', loadCart);
+document.addEventListener('DOMContentLoaded', function() {
+    loadCart();
+    loadPrinterStatusFromDatabase();
+});
 
 // Filter menu by category
 function filterCategory(categoryId) {
@@ -1155,18 +1158,52 @@ async function connectBluetoothPrinter() {
 }
 
 // Update printer status indicator
-function updatePrinterStatus(connected, printerName = '') {
+function updatePrinterStatus(connected, printerName = '', isLastKnown = false) {
     const statusBtn = document.getElementById('printer-status-btn');
     if (statusBtn) {
         if (connected) {
             statusBtn.innerHTML = `<i class="fas fa-print text-green-400"></i> <span class="hidden md:inline">${printerName || 'Terhubung'}</span>`;
-            statusBtn.classList.remove('text-gray-400');
+            statusBtn.classList.remove('text-gray-400', 'text-yellow-400');
             statusBtn.classList.add('text-green-400');
+            // Save to database when connected
+            savePrinterToDatabase(printerName);
+        } else if (isLastKnown && printerName) {
+            // Show last known printer (yellow status)
+            statusBtn.innerHTML = `<i class="fas fa-print text-yellow-400"></i> <span class="hidden md:inline">${printerName} (Klik untuk hubungkan)</span>`;
+            statusBtn.classList.remove('text-gray-400', 'text-green-400');
+            statusBtn.classList.add('text-yellow-400');
         } else {
             statusBtn.innerHTML = '<i class="fas fa-print"></i> <span class="hidden md:inline">Printer</span>';
-            statusBtn.classList.remove('text-green-400');
+            statusBtn.classList.remove('text-green-400', 'text-yellow-400');
             statusBtn.classList.add('text-gray-400');
         }
+    }
+}
+
+// Save printer name to database
+async function savePrinterToDatabase(printerName) {
+    try {
+        await fetch('/api/printer-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ printer_name: printerName })
+        });
+    } catch (error) {
+        console.error('Failed to save printer status:', error);
+    }
+}
+
+// Load printer status from database on page load
+async function loadPrinterStatusFromDatabase() {
+    try {
+        const response = await fetch('/api/printer-status');
+        const data = await response.json();
+        if (data.success && data.printer_name) {
+            // Show last known printer with yellow status
+            updatePrinterStatus(false, data.printer_name, true);
+        }
+    } catch (error) {
+        console.error('Failed to load printer status:', error);
     }
 }
 

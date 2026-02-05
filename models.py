@@ -62,6 +62,7 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(20))
     avatar = db.Column(db.String(255))
     is_active = db.Column(db.Boolean, default=True)
+    printer_name = db.Column(db.String(100))  # Store last connected printer name
     created_at = db.Column(db.DateTime, default=utc_now)
     updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
     last_login = db.Column(db.DateTime)

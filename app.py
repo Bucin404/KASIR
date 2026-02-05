@@ -1431,6 +1431,31 @@ def api_update_order_kitchen_status(order_id):
         'order_status': order.status
     })
 
+# Printer Status API
+@app.route('/api/printer-status')
+@login_required
+def get_printer_status():
+    """Get saved printer name for current user"""
+    return jsonify({
+        'success': True,
+        'printer_name': current_user.printer_name
+    })
+
+@app.route('/api/printer-status', methods=['POST'])
+@login_required
+def save_printer_status():
+    """Save printer name to database for current user"""
+    data = request.get_json()
+    printer_name = data.get('printer_name')
+    
+    current_user.printer_name = printer_name
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'printer_name': printer_name
+    })
+
 # Reports
 @app.route('/reports')
 @login_required
