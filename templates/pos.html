@@ -625,12 +625,15 @@ async function processCheckout() {
         const result = await response.json();
         
         if (result.success) {
+            // Clear cart immediately after successful checkout
+            await clearCart();
+            
             // Handle online payment - redirect to custom payment page
             if (result.payment_method === 'online') {
                 // Redirect to beautiful payment page
                 window.location.href = `/payment/${result.order.id}`;
             } else {
-                // Cash payment success
+                // Cash payment success - show receipt (cart already cleared)
                 showReceipt(result.order);
             }
         } else {
@@ -779,8 +782,7 @@ function showReceipt(order) {
     // AUTO PRINT 3x via Bluetooth after successful payment
     autoPrintReceipt3x(order);
     
-    // Clear cart after showing receipt
-    clearCart();
+    // Note: Cart already cleared in processCheckout() after successful order
 }
 
 // ============================================
