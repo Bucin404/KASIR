@@ -18,6 +18,14 @@ from werkzeug.utils import secure_filename
 from config import config
 from models import db, User, Role, Permission, Category, MenuItem, Table, Order, OrderItem, Payment, Income, Setting, Cart, CartItem, Discount, PendingPrint
 
+# Import USB printer module
+try:
+    from usb_printer import usb_printer, USBPrinterManager
+    USB_PRINTING_AVAILABLE = USBPrinterManager.is_available()
+except ImportError:
+    usb_printer = None
+    USB_PRINTING_AVAILABLE = False
+
 # Initialize Flask app
 app = Flask(__name__)
 app.config.from_object(config['development'])
@@ -1797,6 +1805,183 @@ def clear_pending_prints():
     return jsonify({
         'success': True,
         'message': 'All pending prints cleared'
+    })
+
+
+# ============================================
+# USB PRINTER API (Server-Side Printing)
+# ============================================
+
+@app.route('/api/usb-printer/status')
+@login_required
+def usb_printer_status():
+    """Get USB printer status and availability"""
+    if not USB_PRINTING_AVAILABLE:
+        return jsonify({
+            'success': True,
+            'available': False,
+            'connected': False,
+            'message': 'USB printing not available (install python-escpos and pyusb)'
+        })
+    
+    return jsonify({
+        'success': True,
+        'available': True,
+        'connected': usb_printer.connected if usb_printer else False,
+        'printer_info': usb_printer.printer_info if usb_printer else None
+    })
+
+
+@app.route('/api/usb-printer/devices')
+@login_required
+def list_usb_printers():
+    """List available USB printers"""
+    if not USB_PRINTING_AVAILABLE:
+        return jsonify({
+            'success': False,
+            'message': 'USB printing not available',
+            'devices': []
+        })
+    
+    devices = USBPrinterManager.list_usb_devices()
+    return jsonify({
+        'success': True,
+        'devices': devices
+    })
+
+
+@app.route('/api/usb-printer/connect', methods=['POST'])
+@login_required
+def connect_usb_printer():
+    """Connect to USB printer"""
+    if not USB_PRINTING_AVAILABLE:
+        return jsonify({
+            'success': False,
+            'message': 'USB printing not available'
+        })
+    
+    data = request.get_json() or {}
+    vendor_id = data.get('vendor_id')
+    product_id = data.get('product_id')
+    
+    success, message = usb_printer.connect(vendor_id, product_id)
+    
+    return jsonify({
+        'success': success,
+        'message': message,
+        'connected': usb_printer.connected
+    })
+
+
+@app.route('/api/usb-printer/disconnect', methods=['POST'])
+@login_required
+def disconnect_usb_printer():
+    """Disconnect USB printer"""
+    if usb_printer:
+        usb_printer.disconnect()
+    
+    return jsonify({
+        'success': True,
+        'message': 'Disconnected'
+    })
+
+
+@app.route('/api/usb-printer/test', methods=['POST'])
+@login_required
+def test_usb_print():
+    """Test print on USB printer"""
+    if not USB_PRINTING_AVAILABLE or not usb_printer:
+        return jsonify({
+            'success': False,
+            'message': 'USB printer not available'
+        })
+    
+    success, message = usb_printer.test_print()
+    return jsonify({
+        'success': success,
+        'message': message
+    })
+
+
+@app.route('/api/usb-printer/print', methods=['POST'])
+@login_required
+def usb_print_receipt():
+    """Print receipt on USB printer"""
+    if not USB_PRINTING_AVAILABLE or not usb_printer:
+        return jsonify({
+            'success': False,
+            'message': 'USB printer not available'
+        })
+    
+    data = request.get_json()
+    
+    if 'order_data' in data:
+        success, message = usb_printer.print_receipt(data['order_data'])
+    elif 'raw_commands' in data:
+        success, message = usb_printer.print_raw(data['raw_commands'])
+    else:
+        return jsonify({
+            'success': False,
+            'message': 'No print data provided'
+        })
+    
+    return jsonify({
+        'success': success,
+        'message': message
+    })
+
+
+@app.route('/api/usb-printer/print-pending', methods=['POST'])
+@login_required
+def usb_print_pending():
+    """Print all pending receipts using USB printer"""
+    if not USB_PRINTING_AVAILABLE or not usb_printer or not usb_printer.connected:
+        return jsonify({
+            'success': False,
+            'message': 'USB printer not connected'
+        })
+    
+    pending = PendingPrint.query.filter_by(status='pending').order_by(PendingPrint.created_at).all()
+    
+    if not pending:
+        return jsonify({
+            'success': True,
+            'message': 'No pending prints',
+            'printed': 0
+        })
+    
+    printed_count = 0
+    failed_count = 0
+    
+    for item in pending:
+        try:
+            commands = json.loads(item.receipt_data)
+            success, _ = usb_printer.print_raw(commands)
+            
+            if success:
+                item.status = 'completed'
+                item.printed_at = utc_now()
+                printed_count += 1
+            else:
+                item.retry_count += 1
+                if item.retry_count >= 5:
+                    item.status = 'failed'
+                failed_count += 1
+                
+        except Exception as e:
+            item.retry_count += 1
+            item.error_message = str(e)
+            if item.retry_count >= 5:
+                item.status = 'failed'
+            failed_count += 1
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'printed': printed_count,
+        'failed': failed_count,
+        'message': f'{printed_count} receipts printed, {failed_count} failed'
     })
 
 
