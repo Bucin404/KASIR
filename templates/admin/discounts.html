@@ -127,7 +127,7 @@
                         </td>
                         <td class="py-4 px-4">
                             <div class="flex space-x-2">
-                                <button onclick="editDiscount({{ discount.id }}, {{ discount|tojson|safe }})" 
+                                <button onclick="editDiscount({{ discount.id }}, '{{ discount.name }}', '{{ discount.code }}', '{{ discount.description or '' }}', '{{ discount.discount_type }}', {{ discount.value }}, {{ discount.min_purchase or 0 }}, {{ discount.max_discount or 'null' }}, {{ discount.usage_limit or 'null' }}, '{{ discount.start_date.strftime('%Y-%m-%dT%H:%M') if discount.start_date else '' }}', '{{ discount.end_date.strftime('%Y-%m-%dT%H:%M') if discount.end_date else '' }}', {{ 'true' if discount.is_active else 'false' }})" 
                                         class="p-2 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30">
                                     <i class="fas fa-edit"></i>
                                 </button>
@@ -369,30 +369,19 @@ function toggleDiscount(id) {
         });
 }
 
-function editDiscount(id, discount) {
+function editDiscount(id, name, code, description, discountType, value, minPurchase, maxDiscount, usageLimit, startDate, endDate, isActive) {
     document.getElementById('edit-form').action = `/admin/discounts/${id}/edit`;
-    document.getElementById('edit-name').value = discount.name;
-    document.getElementById('edit-code').value = discount.code;
-    document.getElementById('edit-description').value = discount.description || '';
-    document.getElementById('edit-discount-type').value = discount.discount_type;
-    document.getElementById('edit-value').value = discount.value;
-    document.getElementById('edit-min-purchase').value = discount.min_purchase;
-    document.getElementById('edit-max-discount').value = discount.max_discount || '';
-    document.getElementById('edit-usage-limit').value = discount.usage_limit || '';
-    
-    if (discount.start_date) {
-        document.getElementById('edit-start-date').value = discount.start_date.slice(0, 16);
-    } else {
-        document.getElementById('edit-start-date').value = '';
-    }
-    
-    if (discount.end_date) {
-        document.getElementById('edit-end-date').value = discount.end_date.slice(0, 16);
-    } else {
-        document.getElementById('edit-end-date').value = '';
-    }
-    
-    document.getElementById('edit-is-active').checked = discount.is_active;
+    document.getElementById('edit-name').value = name;
+    document.getElementById('edit-code').value = code;
+    document.getElementById('edit-description').value = description || '';
+    document.getElementById('edit-discount-type').value = discountType;
+    document.getElementById('edit-value').value = value;
+    document.getElementById('edit-min-purchase').value = minPurchase;
+    document.getElementById('edit-max-discount').value = maxDiscount || '';
+    document.getElementById('edit-usage-limit').value = usageLimit || '';
+    document.getElementById('edit-start-date').value = startDate || '';
+    document.getElementById('edit-end-date').value = endDate || '';
+    document.getElementById('edit-is-active').checked = isActive;
     
     toggleMaxDiscount('edit');
     document.getElementById('edit-modal').classList.remove('hidden');
