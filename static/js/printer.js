@@ -19,6 +19,16 @@ const PrinterManager = {
     lastDisconnectTime: 0,  // Timestamp of last disconnect for cooldown
     disconnectCount: 0,  // Count of disconnects for exponential backoff
     autoReconnectSupported: true,  // Flag to track if auto-reconnect is supported
+    lastFocusReconnectTime: 0,  // Timestamp of last focus reconnect for debounce
+    
+    // Configuration constants
+    CONFIG: {
+        BASE_RETRY_DELAY_MS: 500,       // Base delay between retries
+        FOCUS_DEBOUNCE_MS: 2000,        // Minimum time between focus reconnect attempts
+        INIT_RECONNECT_DELAY_MS: 1000,  // Delay before retry after page load
+        WATCH_TIMEOUT_MS: 8000,         // Timeout for watching advertisements
+        BACKGROUND_CHECK_INTERVAL_MS: 5000,  // Interval for background reconnect checker
+    },
     
     // ESC/POS Commands for thermal printers
     ESC_POS: {
@@ -63,6 +73,18 @@ const PrinterManager = {
         // Start background reconnect checker only if supported
         if (this.autoReconnectSupported) {
             this.startReconnectChecker();
+        }
+        
+        // Also try to reconnect immediately on init if we have saved printer
+        if (this.autoReconnectSupported && (this.printerName || this.printerId) && !this.isConnected) {
+            // Small delay to allow page to fully load
+            setTimeout(() => {
+                if (!this.isConnected) {
+                    console.log('PrinterManager: Retrying auto-connect after page load...');
+                    this.reconnectAttempts = 0;  // Reset attempts for fresh start
+                    this.autoReconnect();
+                }
+            }, this.CONFIG.INIT_RECONNECT_DELAY_MS);
         }
     },
     
@@ -181,13 +203,13 @@ const PrinterManager = {
             clearInterval(this.reconnectInterval);
         }
         
-        // Check every 5 seconds if we need to reconnect
+        // Check periodically if we need to reconnect
         this.reconnectInterval = setInterval(async () => {
             if (this.shouldAttemptReconnect()) {
                 console.log('PrinterManager: Background reconnect attempt', this.reconnectAttempts + 1);
                 await this.autoReconnect();
             }
-        }, 5000);
+        }, this.CONFIG.BACKGROUND_CHECK_INTERVAL_MS);
     },
     
     // Stop background reconnect checker
@@ -268,19 +290,28 @@ const PrinterManager = {
             if (matchingDevice) {
                 console.log('PrinterManager: Found matching device:', matchingDevice.name, 'ID:', matchingDevice.id);
                 
-                // Try direct GATT connection
-                try {
-                    const connected = await this.connectToDevice(matchingDevice);
-                    if (connected) {
-                        this.reconnectAttempts = 0; // Reset on successful connection
-                        return true;
+                // Try direct GATT connection with retry
+                for (let attempt = 1; attempt <= 3; attempt++) {
+                    try {
+                        console.log(`PrinterManager: Connection attempt ${attempt}/3`);
+                        const connected = await this.connectToDevice(matchingDevice);
+                        if (connected) {
+                            this.reconnectAttempts = 0; // Reset on successful connection
+                            console.log('PrinterManager: Successfully connected!');
+                            return true;
+                        }
+                    } catch (e) {
+                        console.log(`PrinterManager: Attempt ${attempt} failed:`, e.message);
+                        if (attempt < 3) {
+                            // Wait before retry (increasing delay)
+                            await new Promise(resolve => setTimeout(resolve, this.CONFIG.BASE_RETRY_DELAY_MS * attempt));
+                        }
                     }
-                } catch (e) {
-                    console.log('PrinterManager: Direct connection failed:', e.message);
                 }
                 
                 // Try watching for advertisements (device might be waking up)
                 try {
+                    console.log('PrinterManager: Trying to watch for device advertisements...');
                     const success = await this.watchAndConnect(matchingDevice);
                     if (success) {
                         this.reconnectAttempts = 0;
@@ -289,6 +320,8 @@ const PrinterManager = {
                 } catch (e) {
                     console.log('PrinterManager: Watch advertisements failed:', e.message);
                 }
+            } else {
+                console.log('PrinterManager: No matching device found in paired devices');
             }
             
             // Show last known status if reconnect failed
@@ -314,7 +347,7 @@ const PrinterManager = {
             const timeout = setTimeout(() => {
                 abortController.abort();
                 resolve(false);
-            }, 5000);  // Increased timeout for better chance of catching device
+            }, this.CONFIG.WATCH_TIMEOUT_MS);  // Configurable timeout
             
             device.addEventListener('advertisementreceived', async (event) => {
                 console.log('PrinterManager: Advertisement received from', event.device.name);
@@ -326,7 +359,8 @@ const PrinterManager = {
             
             device.watchAdvertisements({ signal: abortController.signal }).catch(e => {
                 if (e.name !== 'AbortError') {
-                    reject(e);
+                    console.log('PrinterManager: watchAdvertisements error:', e.message);
+                    resolve(false);  // Resolve instead of reject to continue gracefully
                 }
             });
         });
@@ -841,8 +875,34 @@ document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && !PrinterManager.isConnected && (PrinterManager.printerName || PrinterManager.printerId)) {
         console.log('PrinterManager: Page visible, attempting reconnect...');
         PrinterManager.reconnectAttempts = 0;
-        PrinterManager.autoReconnect();
+        if (PrinterManager.autoReconnectSupported) {
+            PrinterManager.autoReconnect();
+        }
     }
+});
+
+// Handle page focus to attempt reconnection (more aggressive than visibility)
+window.addEventListener('focus', () => {
+    if (!PrinterManager.isConnected && (PrinterManager.printerName || PrinterManager.printerId) && PrinterManager.autoReconnectSupported) {
+        const now = Date.now();
+        // Debounce: only reconnect if enough time has passed since last focus attempt
+        if (now - PrinterManager.lastFocusReconnectTime > PrinterManager.CONFIG.FOCUS_DEBOUNCE_MS) {
+            console.log('PrinterManager: Window focused, checking connection...');
+            PrinterManager.lastFocusReconnectTime = now;
+            // Small delay to avoid rapid reconnection attempts
+            setTimeout(() => {
+                if (!PrinterManager.isConnected) {
+                    PrinterManager.reconnectAttempts = 0;
+                    PrinterManager.autoReconnect();
+                }
+            }, PrinterManager.CONFIG.BASE_RETRY_DELAY_MS);
+        }
+    }
+});
+
+// Handle page unload to clean up
+window.addEventListener('beforeunload', () => {
+    PrinterManager.stopReconnectChecker();
 });
 
 // Expose PrinterManager globally
