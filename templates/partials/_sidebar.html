@@ -72,29 +72,13 @@
                     <span>Diskon & Promo</span>
                 </a>
                 
-                <a href="{{ url_for('admin_printer') }}" class="sidebar-link {% if active_page == 'admin_printer' %}active{% endif %} flex items-center space-x-3 px-4 py-3 rounded-xl {% if active_page == 'admin_printer' %}text-white{% else %}text-gray-400 hover:text-white{% endif %}">
+                <a href="{{ url_for('printer_station') }}" target="_blank" class="sidebar-link flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white">
                     <i class="fas fa-print w-5"></i>
-                    <span>Printer</span>
+                    <span>Printer Station</span>
+                    <i class="fas fa-external-link-alt text-xs ml-auto"></i>
                 </a>
             </div>
             {% endif %}
-            
-            <!-- Printer Status -->
-            <div class="pt-4 mt-4 border-t border-white/10">
-                <p class="px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Printer</p>
-                <div id="printer-status" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-gray-400 hover:bg-white/5 transition-colors">
-                    <i class="fas fa-print w-5"></i>
-                    <div class="flex items-center gap-2 flex-1 min-w-0">
-                        <span id="printer-status-dot" class="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></span>
-                        <span id="printer-status-text" class="text-xs text-gray-500 truncate">Memeriksa...</span>
-                    </div>
-                    <button id="printer-action-btn" onclick="event.stopPropagation(); PrinterManager.isConnected ? PrinterManager.disconnect() : PrinterManager.connect()" class="text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition-colors">
-                        Hubungkan
-                    </button>
-                </div>
-                <!-- Auto-reconnect info -->
-                <p id="printer-auto-status" class="px-4 text-xs text-gray-600 mt-1 hidden">Auto-reconnect aktif...</p>
-            </div>
             
             <!-- User Section -->
             <div class="pt-4 mt-4 border-t border-white/10">
