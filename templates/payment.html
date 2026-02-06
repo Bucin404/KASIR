@@ -226,9 +226,11 @@
                         PrinterManager.autoPrintReceipt(orderData, 3);
                     }
                     
+                    // Calculate timeout based on print copies (1.5s per copy + 3s buffer)
+                    const printTimeout = 3 * 1500 + 3000;  // ~7.5 seconds for 3 copies
                     setTimeout(() => {
                         window.location.href = "{{ url_for('orders') }}";
-                    }, 3000);  // Increased to allow printing time
+                    }, printTimeout);
                 },
                 onPending: function(result) {
                     console.log('Payment pending:', result);

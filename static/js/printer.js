@@ -16,6 +16,8 @@ const PrinterManager = {
     reconnectInterval: null,
     pendingPrintQueue: [],  // Queue for pending receipts when printer disconnected
     isProcessingQueue: false,
+    lastDisconnectTime: 0,  // Timestamp of last disconnect for cooldown
+    disconnectCount: 0,  // Count of disconnects for exponential backoff
     
     // ESC/POS Commands for thermal printers
     ESC_POS: {
@@ -69,7 +71,7 @@ const PrinterManager = {
     // Add receipt to pending queue
     addToPendingQueue(receiptData) {
         const queueItem = {
-            id: Date.now(),
+            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,  // More robust ID generation
             data: receiptData,
             addedAt: new Date().toISOString(),
             retryCount: 0
@@ -336,12 +338,29 @@ const PrinterManager = {
         console.log('PrinterManager: Disconnected');
         this.isConnected = false;
         this.characteristic = null;
+        
+        // Track disconnect for exponential backoff
+        const now = Date.now();
+        if (now - this.lastDisconnectTime < 60000) {  // Within 1 minute
+            this.disconnectCount++;
+        } else {
+            this.disconnectCount = 1;  // Reset if it's been more than a minute
+        }
+        this.lastDisconnectTime = now;
+        
+        // Apply cooldown based on disconnect frequency (exponential backoff)
+        const cooldownMs = Math.min(5000 * Math.pow(2, this.disconnectCount - 1), 60000);  // Max 60 seconds
+        
         this.reconnectAttempts = 0;  // Reset attempts for new reconnect cycle
         this.updateStatusUI('disconnected');
         this.showNotification('Printer terputus - akan mencoba menghubungkan ulang...', 'warning');
         
-        // Restart reconnect checker
-        this.startReconnectChecker();
+        // Restart reconnect checker with cooldown
+        setTimeout(() => {
+            this.startReconnectChecker();
+        }, cooldownMs);
+        
+        console.log(`PrinterManager: Will retry in ${cooldownMs/1000}s (disconnect count: ${this.disconnectCount})`);
     },
     
     // Connect to new printer (user initiated)
