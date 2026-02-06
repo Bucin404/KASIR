@@ -205,8 +205,10 @@
         let isProcessing = false; // Prevent race condition
         let autoReconnectInterval = null;
         let reconnectAttempts = 0;
-        const MAX_RECONNECT_ATTEMPTS = 10;
-        const RECONNECT_INTERVAL = 3000; // 3 seconds
+        let continuousReconnectInterval = null; // For always-on reconnect
+        const MAX_RECONNECT_ATTEMPTS = 100; // Much higher for persistence
+        const RECONNECT_INTERVAL = 2000; // 2 seconds - faster polling
+        const CONTINUOUS_CHECK_INTERVAL = 5000; // 5 seconds for continuous check
         
         // Saved printer info (from localStorage)
         const SAVED_PRINTER_KEY = 'printer_station_saved_device';
@@ -381,9 +383,10 @@
                                 await savePrinterStatus(device.name, device.id);
                                 savePrinterToLocal(device.name, device.id);
                                 
-                                logActivity(`Terhubung ke ${device.name}!`, 'success');
+                                logActivity(`✅ Terhubung ke ${device.name}!`, 'success');
                                 showAutoReconnectStatus(false);
                                 stopAutoReconnect();
+                                stopContinuousReconnect(); // Stop continuous reconnect too
                                 reconnectAttempts = 0;
                                 updateUI();
                                 
@@ -421,15 +424,16 @@
         function onDisconnected() {
             isConnected = false;
             characteristic = null;
-            logActivity('Printer terputus', 'warning');
+            logActivity('⚠️ Printer terputus', 'warning');
             updateUI();
             stopPendingChecker();
             
-            // Start auto-reconnect if we have saved printer
+            // Start continuous auto-reconnect (will keep trying indefinitely)
             const savedPrinter = getSavedPrinter();
             if (savedPrinter) {
-                logActivity('Memulai auto-reconnect...', 'info');
-                startAutoReconnect();
+                logActivity('Memulai mode auto-reconnect...', 'info');
+                reconnectAttempts = 0;
+                startContinuousReconnect();
             }
         }
         
@@ -581,6 +585,104 @@
             if (autoReconnectInterval) {
                 clearInterval(autoReconnectInterval);
                 autoReconnectInterval = null;
+            }
+        }
+        
+        // Start continuous background check for printer
+        // This runs ALWAYS when not connected, trying to detect when printer comes back
+        function startContinuousReconnect() {
+            if (continuousReconnectInterval) return; // Already running
+            
+            logActivity('Mode auto-reconnect aktif (akan terus mencoba)', 'info');
+            
+            continuousReconnectInterval = setInterval(async () => {
+                if (isConnected) return; // Skip if already connected
+                
+                // Check if getDevices is supported
+                if (navigator.bluetooth && navigator.bluetooth.getDevices) {
+                    try {
+                        const devices = await navigator.bluetooth.getDevices();
+                        const savedPrinter = getSavedPrinter();
+                        
+                        if (savedPrinter && devices.length > 0) {
+                            const targetDevice = devices.find(d => 
+                                d.name === savedPrinter.name || d.id === savedPrinter.id
+                            );
+                            
+                            if (targetDevice) {
+                                // Check if device might be available (has gatt)
+                                if (targetDevice.gatt) {
+                                    logActivity(`Printer "${targetDevice.name}" terdeteksi, mencoba connect...`, 'info');
+                                    
+                                    try {
+                                        device = targetDevice;
+                                        device.addEventListener('gattserverdisconnected', onDisconnected);
+                                        
+                                        const server = await device.gatt.connect();
+                                        
+                                        // Find writable characteristic
+                                        const serviceUUIDs = [
+                                            '000018f0-0000-1000-8000-00805f9b34fb',
+                                            '0000ff00-0000-1000-8000-00805f9b34fb',
+                                            '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+                                            '0000ffe0-0000-1000-8000-00805f9b34fb'
+                                        ];
+                                        
+                                        for (const uuid of serviceUUIDs) {
+                                            try {
+                                                const service = await server.getPrimaryService(uuid);
+                                                const chars = await service.getCharacteristics();
+                                                
+                                                for (const char of chars) {
+                                                    if (char.properties.write || char.properties.writeWithoutResponse) {
+                                                        characteristic = char;
+                                                        isConnected = true;
+                                                        
+                                                        logActivity(`✅ AUTO-RECONNECT BERHASIL ke ${device.name}!`, 'success');
+                                                        showAutoReconnectStatus(false);
+                                                        reconnectAttempts = 0;
+                                                        updateUI();
+                                                        
+                                                        // Start checking for pending prints
+                                                        startPendingChecker();
+                                                        
+                                                        // Process any pending prints immediately
+                                                        setTimeout(() => processQueue(), 2000);
+                                                        
+                                                        return;
+                                                    }
+                                                }
+                                            } catch (e) {
+                                                continue;
+                                            }
+                                        }
+                                    } catch (connErr) {
+                                        // Connection failed, printer might be off
+                                        console.log('Connection attempt failed:', connErr.message);
+                                    }
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        console.log('Background check error:', err.message);
+                    }
+                }
+                
+                // Update reconnect status indicator
+                reconnectAttempts++;
+                const savedPrinter = getSavedPrinter();
+                if (savedPrinter) {
+                    showAutoReconnectStatus(true, `Menunggu ${savedPrinter.name}... (cek ke-${reconnectAttempts})`);
+                }
+                
+            }, CONTINUOUS_CHECK_INTERVAL);
+        }
+        
+        // Stop continuous reconnect
+        function stopContinuousReconnect() {
+            if (continuousReconnectInterval) {
+                clearInterval(continuousReconnectInterval);
+                continuousReconnectInterval = null;
             }
         }
         
@@ -845,18 +947,26 @@
             updateUI();
             checkPendingPrints();
             
-            // Check for saved printer and try auto-connect
+            // Check for saved printer and start continuous auto-connect
             const savedPrinter = getSavedPrinter();
             if (savedPrinter) {
-                logActivity(`Printer tersimpan: ${savedPrinter.name}`, 'info');
+                logActivity(`📌 Printer tersimpan: ${savedPrinter.name}`, 'info');
+                logActivity('Mode auto-reconnect akan terus mencoba menghubungkan...', 'info');
                 
-                // Try auto-reconnect on page load
+                // Start continuous reconnect immediately
                 setTimeout(() => {
                     if (!isConnected) {
-                        logActivity('Mencoba auto-connect...', 'info');
-                        startAutoReconnect();
+                        startContinuousReconnect();
                     }
                 }, 1000);
+            } else {
+                logActivity('💡 Silakan hubungkan printer (akan disimpan untuk auto-reconnect)', 'info');
+            }
+            
+            // Check if getDevices is supported
+            if (!navigator.bluetooth || !navigator.bluetooth.getDevices) {
+                logActivity('⚠️ Browser tidak mendukung getDevices() - auto-reconnect terbatas', 'warning');
+                logActivity('💡 Gunakan Chrome 85+ untuk auto-reconnect terbaik', 'info');
             }
             
             // Warn before closing
@@ -867,21 +977,33 @@
                 }
             });
             
-            // Handle visibility change - try reconnect when page becomes visible
+            // Handle visibility change - trigger immediate check when tab becomes visible
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible' && !isConnected) {
                     const savedPrinter = getSavedPrinter();
                     if (savedPrinter) {
                         logActivity('Tab aktif kembali, mencoba reconnect...', 'info');
-                        tryAutoReconnect();
+                        // If not running, start continuous reconnect
+                        if (!continuousReconnectInterval) {
+                            startContinuousReconnect();
+                        }
                     }
                 }
             });
         });
         
-        // Keep page active (prevent sleep)
+        // Keep page active (prevent sleep) and show reconnect status
         setInterval(() => {
-            document.title = isConnected ? '🟢 Printer Station' : '🔴 Printer Station';
+            if (isConnected) {
+                document.title = '🟢 Printer Station';
+            } else {
+                const savedPrinter = getSavedPrinter();
+                if (savedPrinter && continuousReconnectInterval) {
+                    document.title = '🔄 Menunggu Printer...';
+                } else {
+                    document.title = '🔴 Printer Station';
+                }
+            }
         }, 1000);
     </script>
 </body>
