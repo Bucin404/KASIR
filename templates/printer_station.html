@@ -520,6 +520,7 @@
             try {
                 const response = await fetch('/api/pending-prints');
                 if (!response.ok) {
+                    logActivity('Gagal mengambil data antrian', 'error');
                     isProcessing = false;
                     return;
                 }
@@ -532,6 +533,8 @@
                 }
                 
                 logActivity(`Memproses ${data.pending_prints.length} struk...`, 'info');
+                let successCount = 0;
+                let failCount = 0;
                 
                 for (const item of data.pending_prints) {
                     try {
@@ -542,6 +545,7 @@
                         await fetch(`/api/pending-prints/${item.id}/complete`, { method: 'POST' });
                         
                         printedCount++;
+                        successCount++;
                         document.getElementById('printedCount').textContent = printedCount;
                         logActivity(`Struk #${item.id} berhasil dicetak`, 'success');
                         
@@ -550,6 +554,7 @@
                         
                     } catch (error) {
                         logActivity(`Gagal cetak struk #${item.id}: ${error.message}`, 'error');
+                        failCount++;
                         
                         // Mark as failed
                         await fetch(`/api/pending-prints/${item.id}/fail`, {
@@ -560,8 +565,18 @@
                     }
                 }
                 
-                // Refresh count (but don't auto-process again immediately)
-                document.getElementById('pendingCount').textContent = '0';
+                // Refresh actual count from server
+                try {
+                    const countResponse = await fetch('/api/pending-prints');
+                    if (countResponse.ok) {
+                        const countData = await countResponse.json();
+                        document.getElementById('pendingCount').textContent = countData.count || 0;
+                    }
+                } catch (e) {
+                    console.error('Error refreshing count:', e);
+                }
+                
+                logActivity(`Selesai: ${successCount} berhasil, ${failCount} gagal`, 'info');
                 
             } catch (error) {
                 logActivity(`Error: ${error.message}`, 'error');
