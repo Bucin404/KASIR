@@ -383,12 +383,25 @@
         if (typeof PrinterManager !== 'undefined') {
             const count = PrinterManager.getPendingCount();
             pendingCount.textContent = count;
-            btnPrintPending.disabled = count === 0 || !PrinterManager.isConnected;
+            // Enable button only if there are pending items AND printer is fully connected
+            btnPrintPending.disabled = count === 0 || !PrinterManager.isConnected || !PrinterManager.characteristic;
+            
+            // Add visual indicator for queue status
+            if (count > 0) {
+                pendingCount.classList.add('animate-pulse');
+            } else {
+                pendingCount.classList.remove('animate-pulse');
+            }
         }
     }
     
     async function processPendingQueue() {
         if (typeof PrinterManager !== 'undefined') {
+            if (!PrinterManager.isConnected || !PrinterManager.characteristic) {
+                showToast('Printer belum terhubung!', 'error');
+                return;
+            }
+            showToast('Memproses antrian struk...', 'info');
             await PrinterManager.processPendingQueue();
             updatePendingUI();
         }

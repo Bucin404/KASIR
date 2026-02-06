@@ -130,9 +130,55 @@ const PrinterManager = {
         return this.pendingPrintQueue.length;
     },
     
+    // Schedule pending queue processing with retry
+    schedulePendingQueueProcessing() {
+        if (this.pendingPrintQueue.length === 0) {
+            console.log('PrinterManager: No pending receipts to schedule');
+            return;
+        }
+        
+        console.log('PrinterManager: Scheduling pending queue processing...');
+        
+        // First attempt after 2 seconds (wait for connection to stabilize)
+        setTimeout(async () => {
+            if (this.isConnected && this.characteristic && this.pendingPrintQueue.length > 0) {
+                console.log('PrinterManager: First attempt to process pending queue...');
+                await this.processPendingQueue();
+            }
+        }, 2000);
+        
+        // Retry after 5 seconds if still have pending items
+        setTimeout(async () => {
+            if (this.isConnected && this.characteristic && this.pendingPrintQueue.length > 0 && !this.isProcessingQueue) {
+                console.log('PrinterManager: Retry processing pending queue...');
+                await this.processPendingQueue();
+            }
+        }, 5000);
+        
+        // Final retry after 10 seconds
+        setTimeout(async () => {
+            if (this.isConnected && this.characteristic && this.pendingPrintQueue.length > 0 && !this.isProcessingQueue) {
+                console.log('PrinterManager: Final retry processing pending queue...');
+                await this.processPendingQueue();
+            }
+        }, 10000);
+    },
+    
     // Process pending queue when printer is connected
     async processPendingQueue() {
-        if (this.isProcessingQueue || !this.isConnected || this.pendingPrintQueue.length === 0) {
+        // Check all conditions before processing
+        if (this.isProcessingQueue) {
+            console.log('PrinterManager: Already processing queue, skipping...');
+            return;
+        }
+        
+        if (!this.isConnected || !this.characteristic) {
+            console.log('PrinterManager: Printer not ready, skipping queue processing');
+            return;
+        }
+        
+        if (this.pendingPrintQueue.length === 0) {
+            console.log('PrinterManager: No pending receipts to process');
             return;
         }
         
@@ -143,18 +189,20 @@ const PrinterManager = {
         let successCount = 0;
         let failCount = 0;
         
-        while (this.pendingPrintQueue.length > 0 && this.isConnected) {
+        while (this.pendingPrintQueue.length > 0 && this.isConnected && this.characteristic) {
             const item = this.pendingPrintQueue[0];
             
             try {
+                console.log('PrinterManager: Printing pending receipt', item.id);
                 await this.printRaw(item.data);
                 // Remove from queue on success
                 this.pendingPrintQueue.shift();
                 this.savePendingQueue();
                 successCount++;
+                console.log('PrinterManager: Successfully printed pending receipt', item.id);
                 
                 // Delay between prints to prevent overlap
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 1500));
             } catch (error) {
                 console.error('PrinterManager: Failed to print pending receipt:', error);
                 item.retryCount++;
@@ -165,10 +213,17 @@ const PrinterManager = {
                     this.pendingPrintQueue.push(item);
                     this.savePendingQueue();
                     failCount++;
+                    console.log('PrinterManager: Moved failed receipt to end of queue after 3 retries');
                 }
                 
                 // Stop processing if printer disconnected
-                if (!this.isConnected) break;
+                if (!this.isConnected || !this.characteristic) {
+                    console.log('PrinterManager: Printer disconnected during processing, stopping...');
+                    break;
+                }
+                
+                // Wait before retry
+                await new Promise(resolve => setTimeout(resolve, 2000));
             }
         }
         
@@ -404,8 +459,9 @@ const PrinterManager = {
                                 this.onDisconnected();
                             });
                             
-                            // Process any pending receipts
-                            setTimeout(() => this.processPendingQueue(), 1000);
+                            // Process any pending receipts with longer delay and retry
+                            // Wait for connection to stabilize before processing queue
+                            this.schedulePendingQueueProcessing();
                             
                             return true;
                         }
