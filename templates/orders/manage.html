@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block title %}Kelola Pesanan Online - KASIR{% endblock %}
+{% block page_title %}Kelola Pesanan Online{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-bar {
+        background: #fff;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+    
+    .filter-btn {
+        padding: 10px 20px;
+        border: 2px solid #e0e0e0;
+        background: #fff;
+        border-radius: 50px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+    }
+    
+    .filter-btn.active {
+        background: linear-gradient(135deg, #3498db, #2ecc71);
+        color: #fff;
+        border-color: transparent;
+    }
+    
+    .orders-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 20px;
+    }
+    
+    .order-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .order-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 5px;
+        height: 100%;
+        background: linear-gradient(180deg, #3498db, #2ecc71);
+    }
+    
+    .order-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+    
+    .order-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .order-id {
+        font-weight: 700;
+        color: var(--primary-blue);
+        font-size: 1.1rem;
+    }
+    
+    .order-status {
+        padding: 6px 12px;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    
+    .status-pending {
+        background: rgba(243, 156, 18, 0.2);
+        color: #f39c12;
+    }
+    
+    .status-confirmed {
+        background: rgba(52, 152, 219, 0.2);
+        color: #3498db;
+    }
+    
+    .status-preparing {
+        background: rgba(155, 89, 182, 0.2);
+        color: #9b59b6;
+    }
+    
+    .status-ready {
+        background: rgba(46, 204, 113, 0.2);
+        color: #27ae60;
+    }
+    
+    .status-completed {
+        background: rgba(46, 204, 113, 0.2);
+        color: #27ae60;
+    }
+    
+    .status-cancelled {
+        background: rgba(231, 76, 60, 0.2);
+        color: #e74c3c;
+    }
+    
+    .order-info {
+        margin-bottom: 15px;
+    }
+    
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .info-row:last-child {
+        border-bottom: none;
+    }
+    
+    .info-label {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+    }
+    
+    .info-value {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    
+    .order-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .btn-action {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        min-width: 100px;
+    }
+    
+    .btn-confirm {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: #fff;
+    }
+    
+    .btn-preparing {
+        background: linear-gradient(135deg, #9b59b6, #8e44ad);
+        color: #fff;
+    }
+    
+    .btn-ready {
+        background: linear-gradient(135deg, #2ecc71, #27ae60);
+        color: #fff;
+    }
+    
+    .btn-complete {
+        background: linear-gradient(135deg, #2ecc71, #27ae60);
+        color: #fff;
+    }
+    
+    .btn-cancel {
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        color: #fff;
+    }
+    
+    .btn-action:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: #fff;
+        border-radius: 15px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .empty-state i {
+        font-size: 4rem;
+        color: #bdc3c7;
+        margin-bottom: 20px;
+    }
+    
+    .empty-state h3 {
+        color: #7f8c8d;
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="filter-bar">
+        <button class="filter-btn {% if not status_filter %}active{% endif %}" 
+                onclick="filterOrders('')">
+            Semua Pesanan
+        </button>
+        <button class="filter-btn {% if status_filter == 'pending' %}active{% endif %}" 
+                onclick="filterOrders('pending')">
+            Pending
+        </button>
+        <button class="filter-btn {% if status_filter == 'confirmed' %}active{% endif %}" 
+                onclick="filterOrders('confirmed')">
+            Dikonfirmasi
+        </button>
+        <button class="filter-btn {% if status_filter == 'preparing' %}active{% endif %}" 
+                onclick="filterOrders('preparing')">
+            Diproses
+        </button>
+        <button class="filter-btn {% if status_filter == 'ready' %}active{% endif %}" 
+                onclick="filterOrders('ready')">
+            Siap
+        </button>
+        <button class="filter-btn {% if status_filter == 'completed' %}active{% endif %}" 
+                onclick="filterOrders('completed')">
+            Selesai
+        </button>
+    </div>
+    
+    {% if orders %}
+    <div class="orders-grid">
+        {% for order in orders %}
+        <div class="order-card">
+            <div class="order-header">
+                <span class="order-id">#{{ order.order_id }}</span>
+                <span class="order-status status-{{ order.order_status }}">
+                    {{ order.order_status|upper }}
+                </span>
+            </div>
+            
+            <div class="order-info">
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="fas fa-table me-2"></i>Meja
+                    </span>
+                    <span class="info-value">{{ order.table_number or 'N/A' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="fas fa-user me-2"></i>Customer
+                    </span>
+                    <span class="info-value">{{ order.customer_name or 'Guest' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="fas fa-money-bill me-2"></i>Total
+                    </span>
+                    <span class="info-value">Rp {{ "{:,.0f}".format(order.total_amount) }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">
+                        <i class="fas fa-clock me-2"></i>Waktu
+                    </span>
+                    <span class="info-value">{{ order.created_at.strftime('%H:%M') if order.created_at else 'N/A' }}</span>
+                </div>
+            </div>
+            
+            <div class="order-actions">
+                {% if order.order_status == 'pending' %}
+                    <button class="btn-action btn-confirm" onclick="updateStatus({{ order.id }}, 'confirmed')">
+                        <i class="fas fa-check me-1"></i>Konfirmasi
+                    </button>
+                    <button class="btn-action btn-cancel" onclick="updateStatus({{ order.id }}, 'cancelled')">
+                        <i class="fas fa-times me-1"></i>Tolak
+                    </button>
+                {% elif order.order_status == 'confirmed' %}
+                    <button class="btn-action btn-preparing" onclick="updateStatus({{ order.id }}, 'preparing')">
+                        <i class="fas fa-utensils me-1"></i>Proses
+                    </button>
+                {% elif order.order_status == 'preparing' %}
+                    <button class="btn-action btn-ready" onclick="updateStatus({{ order.id }}, 'ready')">
+                        <i class="fas fa-check-circle me-1"></i>Siap
+                    </button>
+                {% elif order.order_status == 'ready' %}
+                    <button class="btn-action btn-complete" onclick="updateStatus({{ order.id }}, 'completed')">
+                        <i class="fas fa-check-double me-1"></i>Selesai
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-shopping-cart"></i>
+        <h3>Belum Ada Pesanan</h3>
+        <p class="text-muted">Pesanan online akan muncul di sini</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function filterOrders(status) {
+        window.location.href = `{{ url_for('order.manage_orders') }}?status=${status}`;
+    }
+    
+    function updateStatus(orderId, newStatus) {
+        if (confirm('Ubah status pesanan ini?')) {
+            fetch(`/order/update-status/${orderId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ status: newStatus })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Gagal mengubah status pesanan');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan');
+            });
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Keuangan - KASIR{% endblock %}
+{% block page_title %}Dashboard Keuangan{% endblock %}
+
+{% block extra_css %}
+<style>
+    .finance-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+    }
+    
+    .stat-card.income::before {
+        background: linear-gradient(90deg, #2ecc71, #27ae60);
+    }
+    
+    .stat-card.expense::before {
+        background: linear-gradient(90deg, #e74c3c, #c0392b);
+    }
+    
+    .stat-card.profit::before {
+        background: linear-gradient(90deg, #3498db, #2980b9);
+    }
+    
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: #fff;
+        margin-bottom: 15px;
+    }
+    
+    .stat-icon.income { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+    .stat-icon.expense { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+    .stat-icon.profit { background: linear-gradient(135deg, #3498db, #2980b9); }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 5px;
+    }
+    
+    .stat-label {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+    }
+    
+    .chart-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+    }
+    
+    .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .chart-title {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="finance-stats">
+        <div class="stat-card income">
+            <div class="stat-icon income">
+                <i class="fas fa-arrow-up"></i>
+            </div>
+            <div class="stat-value">Rp {{ total_income|default(0)|format_number }}</div>
+            <div class="stat-label">Total Pemasukan</div>
+        </div>
+        
+        <div class="stat-card expense">
+            <div class="stat-icon expense">
+                <i class="fas fa-arrow-down"></i>
+            </div>
+            <div class="stat-value">Rp {{ total_expense|default(0)|format_number }}</div>
+            <div class="stat-label">Total Pengeluaran</div>
+        </div>
+        
+        <div class="stat-card profit">
+            <div class="stat-icon profit">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="stat-value">Rp {{ profit|default(0)|format_number }}</div>
+            <div class="stat-label">Profit</div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Grafik Keuangan</h3>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary active">Bulan Ini</button>
+                        <button class="btn btn-outline-primary">6 Bulan</button>
+                        <button class="btn btn-outline-primary">1 Tahun</button>
+                    </div>
+                </div>
+                <canvas id="financeChart" height="80"></canvas>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3 class="chart-title">Kategori Pengeluaran</h3>
+                </div>
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // Finance Chart
+    const ctxFinance = document.getElementById('financeChart');
+    if (ctxFinance) {
+        new Chart(ctxFinance, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+                datasets: [{
+                    label: 'Pemasukan',
+                    data: [5000000, 7000000, 6500000, 8000000, 9000000, 10000000],
+                    borderColor: '#2ecc71',
+                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: 'Pengeluaran',
+                    data: [3000000, 4000000, 3500000, 5000000, 5500000, 6000000],
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+    
+    // Category Chart
+    const ctxCategory = document.getElementById('categoryChart');
+    if (ctxCategory) {
+        new Chart(ctxCategory, {
+            type: 'doughnut',
+            data: {
+                labels: ['Operasional', 'Gaji', 'Utilitas', 'Marketing', 'Lainnya'],
+                datasets: [{
+                    data: [30, 25, 20, 15, 10],
+                    backgroundColor: ['#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#e74c3c']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

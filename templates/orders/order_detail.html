@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Detail Pesanan - KASIR{% endblock %}
+{% block page_title %}Detail Pesanan{% endblock %}
+{% block content %}
+<div class="container-fluid">
+    <div class="card" style="max-width: 800px; margin: 0 auto;">
+        <div class="card-body">
+            <h5>Order #{{ order.id if order else '001' }}</h5>
+            <hr>
+            <p><strong>Meja:</strong> {{ order.table if order else 'A1' }}</p>
+            <p><strong>Status:</strong> <span class="badge bg-warning">Pending</span></p>
+            <p><strong>Waktu:</strong> {{ order.time if order else '10:30' }}</p>
+            <h6 class="mt-4">Items:</h6>
+            <ul>
+                <li>Nasi Goreng - Rp 15.000</li>
+                <li>Es Teh - Rp 5.000</li>
+            </ul>
+            <hr>
+            <p class="h5">Total: Rp 20.000</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

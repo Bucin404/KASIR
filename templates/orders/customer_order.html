@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% set hide_sidebar = true %}
+{% set hide_navbar = true %}
+{% block title %}Pemesanan - KASIR{% endblock %}
+{% block extra_css %}
+<style>
+    body { background: linear-gradient(135deg, #0f2a3d 0%, #1a4d6e 50%, #2ecc71 100%); }
+    .order-container {
+        max-width: 600px;
+        margin: 50px auto;
+        background: #fff;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+    .search-box {
+        margin-bottom: 15px;
+    }
+    .product-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .product-item:hover {
+        border-color: #3498db;
+        background: #f8f9fa;
+    }
+    .product-item.selected {
+        border-color: #2ecc71;
+        background: rgba(46, 204, 113, 0.1);
+    }
+    .product-code {
+        font-size: 0.75rem;
+        color: #7f8c8d;
+        font-weight: 600;
+    }
+    .table-number-input {
+        font-size: 1.2rem;
+        font-weight: bold;
+        text-align: center;
+        text-transform: uppercase;
+    }
+    .spicy-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-left: 8px;
+    }
+    .spicy-normal {
+        background: rgba(149, 165, 166, 0.2);
+        color: #7f8c8d;
+    }
+    .spicy-sedang {
+        background: rgba(243, 156, 18, 0.2);
+        color: #f39c12;
+    }
+    .spicy-pedas {
+        background: rgba(231, 76, 60, 0.2);
+        color: #e74c3c;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="order-container">
+    <h3 class="text-center mb-4">
+        <i class="fas fa-qrcode me-2"></i>Pemesanan via QR Code
+    </h3>
+    <form id="orderForm">
+        <div class="mb-4">
+            <label class="form-label fw-bold">
+                <i class="fas fa-table me-2"></i>Nomor Meja
+            </label>
+            <input type="text" class="form-control form-control-lg table-number-input" 
+                   name="table_number" placeholder="Contoh: A1, B5, C10" required>
+            <small class="text-muted">Masukkan nomor meja Anda</small>
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label fw-bold">
+                <i class="fas fa-utensils me-2"></i>Pilih Menu
+            </label>
+            <div class="search-box">
+                <input type="text" class="form-control" id="menuSearch" 
+                       placeholder="Cari menu berdasarkan kode atau nama...">
+            </div>
+            <div id="menuList">
+                <div class="product-item" data-id="1" data-name="nasi goreng" onclick="toggleProduct(this, 1, 'Nasi Goreng', 15000)">
+                    <div>
+                        <div class="product-code">#001</div>
+                        <strong>Nasi Goreng</strong><br>
+                        <small class="text-muted">Rp 15.000</small>
+                    </div>
+                    <input type="checkbox" name="products[]" value="1">
+                </div>
+                <div class="product-item" data-id="2" data-name="mie goreng" onclick="toggleProduct(this, 2, 'Mie Goreng', 12000)">
+                    <div>
+                        <div class="product-code">#002</div>
+                        <strong>Mie Goreng</strong><br>
+                        <small class="text-muted">Rp 12.000</small>
+                    </div>
+                    <input type="checkbox" name="products[]" value="2">
+                </div>
+                <div class="product-item" data-id="3" data-name="es teh" onclick="toggleProduct(this, 3, 'Es Teh', 5000)">
+                    <div>
+                        <div class="product-code">#003</div>
+                        <strong>Es Teh</strong><br>
+                        <small class="text-muted">Rp 5.000</small>
+                    </div>
+                    <input type="checkbox" name="products[]" value="3">
+                </div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label fw-bold">
+                <i class="fas fa-comment me-2"></i>Catatan (Opsional)
+            </label>
+            <textarea class="form-control" name="notes" rows="2" placeholder="Contoh: Pedas sedang, tanpa bawang..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-success w-100 btn-lg">
+            <i class="fas fa-paper-plane me-2"></i>Kirim Pesanan
+        </button>
+    </form>
+</div>
+<script>
+    // Search functionality
+    document.getElementById('menuSearch').addEventListener('input', function(e) {
+        const searchQuery = e.target.value.toLowerCase();
+        const menuItems = document.querySelectorAll('.product-item');
+        
+        menuItems.forEach(item => {
+            const id = item.dataset.id;
+            const name = item.dataset.name;
+            
+            if (id.includes(searchQuery) || name.includes(searchQuery)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+    
+    function toggleProduct(element, id, name, price) {
+        element.classList.toggle('selected');
+        const checkbox = element.querySelector('input[type="checkbox"]');
+        checkbox.checked = !checkbox.checked;
+    }
+    
+    document.getElementById('orderForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const tableNumber = this.querySelector('[name="table_number"]').value;
+        const selectedProducts = this.querySelectorAll('input[name="products[]"]:checked');
+        
+        if (selectedProducts.length === 0) {
+            alert('Pilih minimal 1 menu!');
+            return;
+        }
+        
+        alert(`Pesanan berhasil dikirim!\nNomor Meja: ${tableNumber}\nTotal item: ${selectedProducts.length}`);
+        this.reset();
+        document.querySelectorAll('.product-item').forEach(item => item.classList.remove('selected'));
+    });
+</script>
+{% endblock %}

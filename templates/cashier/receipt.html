@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Struk Pembayaran - KASIR</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            max-width: 80mm;
+            margin: 0 auto;
+        }
+        
+        .receipt {
+            background: #fff;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 2px dashed #000;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            font-size: 0.85rem;
+            margin: 2px 0;
+        }
+        
+        .transaction-info {
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 10px;
+        }
+        
+        .transaction-info div {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+        }
+        
+        .items {
+            margin-bottom: 15px;
+        }
+        
+        .item {
+            margin: 8px 0;
+            font-size: 0.9rem;
+        }
+        
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+        }
+        
+        .item-detail {
+            display: flex;
+            justify-content: space-between;
+            padding-left: 10px;
+            color: #666;
+        }
+        
+        .summary {
+            border-top: 1px dashed #000;
+            border-bottom: 2px dashed #000;
+            padding: 10px 0;
+            margin: 15px 0;
+        }
+        
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+        
+        .summary-row.total {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #000;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.85rem;
+        }
+        
+        .footer p {
+            margin: 5px 0;
+        }
+        
+        @media print {
+            body {
+                padding: 0;
+            }
+            
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt">
+        <div class="header">
+            <h1>💎 KASIR</h1>
+            <p>Jl. Contoh No. 123</p>
+            <p>Telp: (021) 12345678</p>
+        </div>
+        
+        <div class="transaction-info">
+            <div>
+                <span>No. Transaksi:</span>
+                <span id="transactionNo">TRX001</span>
+            </div>
+            <div>
+                <span>Tanggal:</span>
+                <span id="transactionDate"></span>
+            </div>
+            <div>
+                <span>Kasir:</span>
+                <span id="cashierName">Admin</span>
+            </div>
+        </div>
+        
+        <div class="items" id="items">
+            <!-- Items will be populated here -->
+        </div>
+        
+        <div class="summary">
+            <div class="summary-row">
+                <span>Subtotal:</span>
+                <span id="subtotal">Rp 0</span>
+            </div>
+            <div class="summary-row">
+                <span>Pajak (10%):</span>
+                <span id="tax">Rp 0</span>
+            </div>
+            <div class="summary-row total">
+                <span>TOTAL:</span>
+                <span id="total">Rp 0</span>
+            </div>
+            <div class="summary-row" style="margin-top: 10px;">
+                <span>Bayar:</span>
+                <span id="paid">Rp 0</span>
+            </div>
+            <div class="summary-row">
+                <span>Kembalian:</span>
+                <span id="change">Rp 0</span>
+            </div>
+            <div class="summary-row">
+                <span>Metode:</span>
+                <span id="method">Tunai</span>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Terima kasih atas kunjungan Anda!</p>
+            <p>Barang yang sudah dibeli tidak dapat ditukar/dikembalikan</p>
+            <p style="margin-top: 15px;">www.kasir-app.com</p>
+        </div>
+    </div>
+    
+    <div class="no-print" style="text-align: center; margin-top: 30px;">
+        <button onclick="window.print()" style="padding: 10px 30px; background: #3498db; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem;">
+            <i class="fas fa-print"></i> Cetak Struk
+        </button>
+        <button onclick="window.close()" style="padding: 10px 30px; background: #95a5a6; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; margin-left: 10px;">
+            Tutup
+        </button>
+    </div>
+    
+    <script>
+        // Get transaction data from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const data = JSON.parse(decodeURIComponent(urlParams.get('data') || '{}'));
+        
+        // Populate receipt
+        if (data.items) {
+            // Transaction info
+            document.getElementById('transactionNo').textContent = 'TRX' + Date.now().toString().slice(-6);
+            document.getElementById('transactionDate').textContent = new Date().toLocaleString('id-ID');
+            
+            // Items
+            const itemsHtml = data.items.map(item => `
+                <div class="item">
+                    <div class="item-header">
+                        <span>${item.name}</span>
+                        <span>Rp ${(item.price * item.qty).toLocaleString()}</span>
+                    </div>
+                    <div class="item-detail">
+                        <span>${item.qty} x Rp ${item.price.toLocaleString()}</span>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('items').innerHTML = itemsHtml;
+            
+            // Summary
+            document.getElementById('subtotal').textContent = `Rp ${data.subtotal.toLocaleString()}`;
+            document.getElementById('tax').textContent = `Rp ${data.tax.toLocaleString()}`;
+            document.getElementById('total').textContent = `Rp ${data.total.toLocaleString()}`;
+            document.getElementById('paid').textContent = `Rp ${data.paid.toLocaleString()}`;
+            document.getElementById('change').textContent = `Rp ${data.change.toLocaleString()}`;
+            document.getElementById('method').textContent = data.method === 'cash' ? 'Tunai' : 
+                                                           data.method === 'card' ? 'Kartu' : 'QR Code';
+        }
+        
+        // Auto print on load
+        setTimeout(() => window.print(), 500);
+    </script>
+</body>
+</html>
