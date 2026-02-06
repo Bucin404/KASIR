@@ -428,7 +428,9 @@ function toggleMobileCart() {
 function updateMobileCartCount() {
     const mobileCartCount = document.getElementById('mobile-cart-count');
     if (mobileCartCount) {
-        const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+        // cart is an object with items array, not an array directly
+        const items = cart.items || [];
+        const count = items.reduce((sum, item) => sum + item.quantity, 0);
         mobileCartCount.textContent = count;
         mobileCartCount.style.display = count > 0 ? 'flex' : 'none';
     }
@@ -642,6 +644,7 @@ async function clearCart() {
 
 // Update item quantity via API
 async function updateQuantity(itemId, delta) {
+    if (!cart.items) return;
     const item = cart.items.find(i => i.id === itemId);
     if (!item) return;
     
