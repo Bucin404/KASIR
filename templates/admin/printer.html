@@ -61,8 +61,31 @@
                 
                 <div class="space-y-2 text-sm">
                     <p><strong>Printer Tersimpan:</strong> <span id="savedPrinter">-</span></p>
+                    <p><strong>Device ID (MAC):</strong> <span id="savedPrinterId">-</span></p>
                     <p><strong>Terakhir Terhubung:</strong> <span id="lastConnected">-</span></p>
                     <p><strong>Auto-Reconnect:</strong> <span id="autoReconnectAttempts">0</span> percobaan</p>
+                </div>
+            </div>
+            
+            <!-- Pending Queue Card -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 class="text-lg font-semibold mb-4">📋 Antrian Print Pending</h2>
+                
+                <div class="space-y-2 text-sm">
+                    <p><strong>Struk Menunggu:</strong> <span id="pendingCount" class="text-orange-600 font-bold">0</span> struk</p>
+                    <p class="text-gray-500">Struk yang gagal dicetak akan otomatis dicetak saat printer terhubung kembali.</p>
+                </div>
+                
+                <div class="mt-4 flex space-x-2">
+                    <button id="btnPrintPending" onclick="processPendingQueue()" 
+                        class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-lg font-medium transition disabled:opacity-50"
+                        disabled>
+                        🖨️ Cetak Pending Sekarang
+                    </button>
+                    <button id="btnClearPending" onclick="clearPendingQueue()" 
+                        class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition">
+                        🗑️ Hapus Antrian
+                    </button>
                 </div>
             </div>
             
@@ -73,9 +96,10 @@
                 <ol class="list-decimal list-inside space-y-2 text-blue-700">
                     <li>Pastikan printer Bluetooth thermal sudah menyala</li>
                     <li>Klik "Hubungkan Printer" dan pilih printer dari daftar</li>
-                    <li>Setelah terhubung, printer akan tersimpan dan auto-connect di lain waktu</li>
+                    <li>Setelah terhubung, printer akan tersimpan (nama + MAC address) untuk auto-connect</li>
                     <li>Gunakan "Test Print" untuk memastikan printer berfungsi</li>
-                    <li>Printer akan otomatis reconnect saat berpindah halaman</li>
+                    <li>Printer akan otomatis reconnect saat berpindah halaman atau setelah terputus</li>
+                    <li>Struk yang gagal dicetak akan masuk ke antrian pending dan otomatis dicetak saat printer terhubung</li>
                 </ol>
                 
                 <div class="mt-4 p-3 bg-yellow-100 rounded text-yellow-800 text-sm">
@@ -85,6 +109,9 @@
         </div>
     </div>
 </div>
+
+<!-- Include Global Printer Manager -->
+<script src="{{ url_for('static', filename='js/printer.js') }}"></script>
 
 <script>
     // Printer state
@@ -348,6 +375,36 @@
         document.getElementById('autoConnectText').textContent = isConnected ? 'Auto-connect: Terhubung' : 'Auto-connect: Aktif';
     }
     
+    // Pending queue functions
+    function updatePendingUI() {
+        const pendingCount = document.getElementById('pendingCount');
+        const btnPrintPending = document.getElementById('btnPrintPending');
+        
+        if (typeof PrinterManager !== 'undefined') {
+            const count = PrinterManager.getPendingCount();
+            pendingCount.textContent = count;
+            btnPrintPending.disabled = count === 0 || !PrinterManager.isConnected;
+        }
+    }
+    
+    async function processPendingQueue() {
+        if (typeof PrinterManager !== 'undefined') {
+            await PrinterManager.processPendingQueue();
+            updatePendingUI();
+        }
+    }
+    
+    function clearPendingQueue() {
+        if (confirm('Yakin ingin menghapus semua struk pending?')) {
+            if (typeof PrinterManager !== 'undefined') {
+                PrinterManager.pendingPrintQueue = [];
+                PrinterManager.savePendingQueue();
+                updatePendingUI();
+                showToast('Antrian pending dihapus', 'info');
+            }
+        }
+    }
+    
     // Toast notification
     function showToast(message, type = 'info') {
         const colors = {
@@ -372,6 +429,11 @@
     document.addEventListener('DOMContentLoaded', async () => {
         const saved = await loadSavedPrinter();
         
+        // Display saved printer ID
+        if (saved && saved.id) {
+            document.getElementById('savedPrinterId').textContent = saved.id;
+        }
+        
         if (saved && (saved.name || saved.id)) {
             document.getElementById('statusText').textContent = 'Auto-connecting...';
             document.getElementById('statusIndicator').className = 'w-4 h-4 rounded-full bg-yellow-500 animate-pulse';
@@ -385,6 +447,10 @@
         }
         
         updateUI();
+        updatePendingUI();
+        
+        // Update pending UI periodically
+        setInterval(updatePendingUI, 2000);
     });
 </script>
 {% endblock %}

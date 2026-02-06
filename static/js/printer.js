@@ -2,6 +2,7 @@
  * Global Printer Manager
  * Handles Bluetooth printer connection across all pages
  * Auto-reconnects on page load if printer was previously connected
+ * Includes pending print queue for receipts when printer is disconnected
  */
 
 const PrinterManager = {
@@ -9,13 +10,32 @@ const PrinterManager = {
     characteristic: null,
     isConnected: false,
     printerName: null,
+    printerId: null,  // MAC address / device ID for reliable reconnection
     reconnectAttempts: 0,
-    maxReconnectAttempts: 5,
+    maxReconnectAttempts: 10,
     reconnectInterval: null,
+    pendingPrintQueue: [],  // Queue for pending receipts when printer disconnected
+    isProcessingQueue: false,
+    
+    // ESC/POS Commands for thermal printers
+    ESC_POS: {
+        INIT: [0x1B, 0x40],
+        ALIGN_CENTER: [0x1B, 0x61, 0x01],
+        ALIGN_LEFT: [0x1B, 0x61, 0x00],
+        BOLD_ON: [0x1B, 0x45, 0x01],
+        BOLD_OFF: [0x1B, 0x45, 0x00],
+        DOUBLE_HEIGHT: [0x1B, 0x21, 0x10],
+        NORMAL_SIZE: [0x1B, 0x21, 0x00],
+        CUT_PAPER: [0x1D, 0x56, 0x00],
+        FEED_LINE: [0x0A],
+        FEED_LINES: (n) => [0x1B, 0x64, n],
+    },
     
     // Initialize printer manager
     async init() {
         console.log('PrinterManager: Initializing...');
+        // Load pending queue from localStorage
+        this.loadPendingQueue();
         await this.loadSavedPrinter();
         this.updateStatusUI();
         
@@ -23,11 +43,110 @@ const PrinterManager = {
         this.startReconnectChecker();
     },
     
+    // Load pending queue from localStorage
+    loadPendingQueue() {
+        try {
+            const saved = localStorage.getItem('pendingPrintQueue');
+            if (saved) {
+                this.pendingPrintQueue = JSON.parse(saved);
+                console.log('PrinterManager: Loaded', this.pendingPrintQueue.length, 'pending receipts from storage');
+            }
+        } catch (error) {
+            console.error('PrinterManager: Error loading pending queue:', error);
+            this.pendingPrintQueue = [];
+        }
+    },
+    
+    // Save pending queue to localStorage
+    savePendingQueue() {
+        try {
+            localStorage.setItem('pendingPrintQueue', JSON.stringify(this.pendingPrintQueue));
+        } catch (error) {
+            console.error('PrinterManager: Error saving pending queue:', error);
+        }
+    },
+    
+    // Add receipt to pending queue
+    addToPendingQueue(receiptData) {
+        const queueItem = {
+            id: Date.now(),
+            data: receiptData,
+            addedAt: new Date().toISOString(),
+            retryCount: 0
+        };
+        this.pendingPrintQueue.push(queueItem);
+        this.savePendingQueue();
+        console.log('PrinterManager: Added receipt to pending queue. Total:', this.pendingPrintQueue.length);
+        this.showNotification(`Struk ditambahkan ke antrian (${this.pendingPrintQueue.length} pending)`, 'warning');
+    },
+    
+    // Get pending queue count
+    getPendingCount() {
+        return this.pendingPrintQueue.length;
+    },
+    
+    // Process pending queue when printer is connected
+    async processPendingQueue() {
+        if (this.isProcessingQueue || !this.isConnected || this.pendingPrintQueue.length === 0) {
+            return;
+        }
+        
+        this.isProcessingQueue = true;
+        console.log('PrinterManager: Processing', this.pendingPrintQueue.length, 'pending receipts');
+        this.showNotification(`Mencetak ${this.pendingPrintQueue.length} struk pending...`, 'info');
+        
+        let successCount = 0;
+        let failCount = 0;
+        
+        while (this.pendingPrintQueue.length > 0 && this.isConnected) {
+            const item = this.pendingPrintQueue[0];
+            
+            try {
+                await this.printRaw(item.data);
+                // Remove from queue on success
+                this.pendingPrintQueue.shift();
+                this.savePendingQueue();
+                successCount++;
+                
+                // Delay between prints to prevent overlap
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            } catch (error) {
+                console.error('PrinterManager: Failed to print pending receipt:', error);
+                item.retryCount++;
+                
+                if (item.retryCount >= 3) {
+                    // Move to end of queue after 3 failures
+                    this.pendingPrintQueue.shift();
+                    this.pendingPrintQueue.push(item);
+                    this.savePendingQueue();
+                    failCount++;
+                }
+                
+                // Stop processing if printer disconnected
+                if (!this.isConnected) break;
+            }
+        }
+        
+        this.isProcessingQueue = false;
+        
+        if (successCount > 0) {
+            this.showNotification(`${successCount} struk berhasil dicetak!`, 'success');
+        }
+        if (failCount > 0) {
+            this.showNotification(`${failCount} struk gagal, akan dicoba lagi nanti`, 'warning');
+        }
+    },
+    
     // Start background reconnect checker
     startReconnectChecker() {
+        // Clear existing interval
+        if (this.reconnectInterval) {
+            clearInterval(this.reconnectInterval);
+        }
+        
         // Check every 5 seconds if we need to reconnect
         this.reconnectInterval = setInterval(async () => {
-            if (!this.isConnected && this.printerName && this.reconnectAttempts < this.maxReconnectAttempts) {
+            if (!this.isConnected && (this.printerName || this.printerId) && this.reconnectAttempts < this.maxReconnectAttempts) {
                 console.log('PrinterManager: Background reconnect attempt', this.reconnectAttempts + 1);
                 await this.autoReconnect();
             }
@@ -40,9 +159,10 @@ const PrinterManager = {
             const response = await fetch('/api/printer-status');
             if (response.ok) {
                 const data = await response.json();
-                if (data.printer_name) {
+                if (data.printer_name || data.printer_id) {
                     this.printerName = data.printer_name;
-                    console.log('PrinterManager: Found saved printer:', this.printerName);
+                    this.printerId = data.printer_id;
+                    console.log('PrinterManager: Found saved printer:', this.printerName, 'ID:', this.printerId);
                     // Attempt auto-reconnect immediately
                     this.updateStatusUI('connecting');
                     await this.autoReconnect();
@@ -76,11 +196,17 @@ const PrinterManager = {
             const devices = await navigator.bluetooth.getDevices();
             console.log('PrinterManager: Found', devices.length, 'paired devices');
             
-            // Find our printer
-            const matchingDevice = devices.find(d => d.name === this.printerName);
+            // Find our printer by ID (more reliable) or name
+            let matchingDevice = null;
+            if (this.printerId) {
+                matchingDevice = devices.find(d => d.id === this.printerId);
+            }
+            if (!matchingDevice && this.printerName) {
+                matchingDevice = devices.find(d => d.name === this.printerName);
+            }
             
             if (matchingDevice) {
-                console.log('PrinterManager: Found matching device:', matchingDevice.name);
+                console.log('PrinterManager: Found matching device:', matchingDevice.name, 'ID:', matchingDevice.id);
                 
                 // Try direct GATT connection
                 try {
@@ -95,14 +221,18 @@ const PrinterManager = {
                 
                 // Try watching for advertisements (device might be waking up)
                 try {
-                    await this.watchAndConnect(matchingDevice);
+                    const success = await this.watchAndConnect(matchingDevice);
+                    if (success) {
+                        this.reconnectAttempts = 0;
+                        return true;
+                    }
                 } catch (e) {
                     console.log('PrinterManager: Watch advertisements failed:', e.message);
                 }
             }
             
             // Show last known status if reconnect failed
-            if (!this.isConnected && this.printerName) {
+            if (!this.isConnected && (this.printerName || this.printerId)) {
                 this.updateStatusUI('lastknown');
             }
             
@@ -110,7 +240,7 @@ const PrinterManager = {
             
         } catch (error) {
             console.error('PrinterManager: Auto-reconnect error:', error);
-            if (this.printerName) {
+            if (this.printerName || this.printerId) {
                 this.updateStatusUI('lastknown');
             }
             return false;
@@ -124,7 +254,7 @@ const PrinterManager = {
             const timeout = setTimeout(() => {
                 abortController.abort();
                 resolve(false);
-            }, 3000);
+            }, 5000);  // Increased timeout for better chance of catching device
             
             device.addEventListener('advertisementreceived', async (event) => {
                 console.log('PrinterManager: Advertisement received from', event.device.name);
@@ -166,11 +296,12 @@ const PrinterManager = {
                             this.characteristic = char;
                             this.isConnected = true;
                             this.printerName = device.name;
+                            this.printerId = device.id;  // Save the device ID (MAC address)
                             
-                            // Save to database
-                            await this.savePrinterStatus(device.name);
+                            // Save to database with ID
+                            await this.savePrinterStatus(device.name, device.id);
                             
-                            console.log('PrinterManager: Connected to', device.name);
+                            console.log('PrinterManager: Connected to', device.name, 'ID:', device.id);
                             this.updateStatusUI('connected');
                             this.showNotification('Printer terhubung: ' + device.name, 'success');
                             
@@ -178,6 +309,9 @@ const PrinterManager = {
                             device.addEventListener('gattserverdisconnected', () => {
                                 this.onDisconnected();
                             });
+                            
+                            // Process any pending receipts
+                            setTimeout(() => this.processPendingQueue(), 1000);
                             
                             return true;
                         }
@@ -202,8 +336,12 @@ const PrinterManager = {
         console.log('PrinterManager: Disconnected');
         this.isConnected = false;
         this.characteristic = null;
+        this.reconnectAttempts = 0;  // Reset attempts for new reconnect cycle
         this.updateStatusUI('disconnected');
-        this.showNotification('Printer terputus', 'warning');
+        this.showNotification('Printer terputus - akan mencoba menghubungkan ulang...', 'warning');
+        
+        // Restart reconnect checker
+        this.startReconnectChecker();
     },
     
     // Connect to new printer (user initiated)
@@ -248,28 +386,53 @@ const PrinterManager = {
         this.isConnected = false;
         this.characteristic = null;
         this.printerName = null;
+        this.printerId = null;
         
         // Clear from database
-        await this.savePrinterStatus('');
+        await this.savePrinterStatus('', '');
         
         this.updateStatusUI('disconnected');
         this.showNotification('Printer diputuskan', 'info');
     },
     
-    // Save printer status to database
-    async savePrinterStatus(printerName) {
+    // Save printer status to database (with device ID)
+    async savePrinterStatus(printerName, printerId = null) {
         try {
             await fetch('/api/printer-status', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ printer_name: printerName })
+                body: JSON.stringify({ 
+                    printer_name: printerName,
+                    printer_id: printerId
+                })
             });
         } catch (error) {
             console.error('PrinterManager: Error saving printer status:', error);
         }
     },
     
-    // Print data
+    // Print raw byte data
+    async printRaw(data) {
+        if (!this.isConnected || !this.characteristic) {
+            throw new Error('Printer tidak terhubung');
+        }
+        
+        // Send in chunks of 100 bytes
+        const chunkSize = 100;
+        for (let i = 0; i < data.length; i += chunkSize) {
+            const chunk = data.slice(i, i + chunkSize);
+            if (this.characteristic.properties.writeWithoutResponse) {
+                await this.characteristic.writeValueWithoutResponse(new Uint8Array(chunk));
+            } else {
+                await this.characteristic.writeValue(new Uint8Array(chunk));
+            }
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        
+        return true;
+    },
+    
+    // Print text data
     async print(data) {
         if (!this.isConnected || !this.characteristic) {
             this.showNotification('Printer tidak terhubung', 'error');
@@ -279,24 +442,185 @@ const PrinterManager = {
         try {
             const encoder = new TextEncoder();
             const bytes = encoder.encode(data);
-            
-            // Send in chunks of 100 bytes
-            const chunkSize = 100;
-            for (let i = 0; i < bytes.length; i += chunkSize) {
-                const chunk = bytes.slice(i, i + chunkSize);
-                if (this.characteristic.properties.writeWithoutResponse) {
-                    await this.characteristic.writeValueWithoutResponse(chunk);
-                } else {
-                    await this.characteristic.writeValue(chunk);
-                }
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
-            
+            await this.printRaw(Array.from(bytes));
             return true;
         } catch (error) {
             console.error('PrinterManager: Print error:', error);
             this.showNotification('Gagal mencetak: ' + error.message, 'error');
             return false;
+        }
+    },
+    
+    // Print receipt with auto-connect and pending queue support
+    async printReceipt(receiptCommands, addToQueueOnFail = true) {
+        // First check if connected
+        if (!this.isConnected) {
+            console.log('PrinterManager: Not connected, attempting to connect...');
+            
+            // Try to auto-reconnect
+            const connected = await this.autoReconnect();
+            
+            if (!connected) {
+                // If still not connected, add to pending queue
+                if (addToQueueOnFail) {
+                    this.addToPendingQueue(receiptCommands);
+                }
+                return false;
+            }
+        }
+        
+        // Now try to print
+        try {
+            await this.printRaw(receiptCommands);
+            this.showNotification('Struk berhasil dicetak!', 'success');
+            return true;
+        } catch (error) {
+            console.error('PrinterManager: Print error:', error);
+            
+            // If print failed, add to queue
+            if (addToQueueOnFail) {
+                this.addToPendingQueue(receiptCommands);
+            }
+            return false;
+        }
+    },
+    
+    // Build receipt commands from order data
+    buildReceiptCommands(order, copyNum = 1, totalCopies = 1) {
+        const encoder = new TextEncoder();
+        let commands = [];
+        
+        const copyLabels = ['Kasir', 'Pelanggan', 'Dapur'];
+        const copyLabel = copyLabels[copyNum - 1] || `Copy ${copyNum}`;
+        
+        // Initialize printer
+        commands.push(...this.ESC_POS.INIT);
+        
+        // Header
+        commands.push(...this.ESC_POS.ALIGN_CENTER);
+        commands.push(...this.ESC_POS.BOLD_ON);
+        commands.push(...encoder.encode('================================\n'));
+        commands.push(...encoder.encode(' ★ DAPOER TERAS OBOR ★\n'));
+        commands.push(...encoder.encode('    Kuliner Nusantara\n'));
+        commands.push(...encoder.encode('================================\n'));
+        commands.push(...this.ESC_POS.BOLD_OFF);
+        commands.push(...encoder.encode('Jl. Rw. Belong, Jakarta Barat\n'));
+        commands.push(...encoder.encode('Telp: 021-XXXXXXX\n\n'));
+        
+        // Copy indicator
+        commands.push(...this.ESC_POS.BOLD_ON);
+        commands.push(...encoder.encode(`>>> Lembar ${copyNum}/${totalCopies} - ${copyLabel} <<<\n`));
+        commands.push(...this.ESC_POS.BOLD_OFF);
+        commands.push(...encoder.encode('--------------------------------\n'));
+        
+        // Order info
+        commands.push(...this.ESC_POS.ALIGN_LEFT);
+        commands.push(...encoder.encode(`No Order : ${order.order_number || 'N/A'}\n`));
+        commands.push(...encoder.encode(`Tanggal  : ${new Date().toLocaleDateString('id-ID')}\n`));
+        commands.push(...encoder.encode(`Jam      : ${new Date().toLocaleTimeString('id-ID')}\n`));
+        if (order.table) {
+            commands.push(...encoder.encode(`Meja     : ${order.table}\n`));
+        }
+        if (order.customer_name) {
+            commands.push(...encoder.encode(`Nama     : ${order.customer_name}\n`));
+        }
+        
+        commands.push(...encoder.encode('--------------------------------\n'));
+        commands.push(...this.ESC_POS.ALIGN_CENTER);
+        commands.push(...this.ESC_POS.BOLD_ON);
+        commands.push(...encoder.encode('DETAIL PESANAN\n'));
+        commands.push(...this.ESC_POS.BOLD_OFF);
+        commands.push(...encoder.encode('--------------------------------\n'));
+        commands.push(...this.ESC_POS.ALIGN_LEFT);
+        
+        // Items
+        if (order.items && order.items.length > 0) {
+            for (const item of order.items) {
+                const name = (item.name || '').substring(0, 20);
+                const qty = `x${item.quantity}`;
+                const price = this.formatNumber(item.subtotal);
+                
+                commands.push(...encoder.encode(`${name}\n`));
+                commands.push(...encoder.encode(`   ${qty}           Rp ${price}\n`));
+            }
+        }
+        
+        commands.push(...encoder.encode('--------------------------------\n'));
+        
+        // Totals
+        const pad = (label, value) => {
+            const space = 32 - label.length - value.length;
+            return label + ' '.repeat(Math.max(1, space)) + value;
+        };
+        
+        commands.push(...encoder.encode(pad('Subtotal:', `Rp ${this.formatNumber(order.subtotal || 0)}\n`)));
+        if (order.discount && order.discount > 0) {
+            commands.push(...encoder.encode(pad('Diskon:', `- Rp ${this.formatNumber(order.discount)}\n`)));
+        }
+        commands.push(...encoder.encode(pad('Pajak (10%):', `Rp ${this.formatNumber(order.tax || 0)}\n`)));
+        
+        commands.push(...encoder.encode('================================\n'));
+        commands.push(...this.ESC_POS.BOLD_ON);
+        commands.push(...this.ESC_POS.DOUBLE_HEIGHT);
+        commands.push(...encoder.encode(pad('TOTAL:', `Rp ${this.formatNumber(order.total || 0)}\n`)));
+        commands.push(...this.ESC_POS.NORMAL_SIZE);
+        commands.push(...this.ESC_POS.BOLD_OFF);
+        commands.push(...encoder.encode('================================\n'));
+        
+        // Payment info
+        if (order.payment) {
+            commands.push(...encoder.encode(pad('Bayar:', `Rp ${this.formatNumber(order.payment.paid_amount || 0)}\n`)));
+            commands.push(...encoder.encode(pad('Kembalian:', `Rp ${this.formatNumber(order.payment.change_amount || 0)}\n`)));
+            commands.push(...encoder.encode(`Metode: ${order.payment.payment_method || 'Cash'}\n`));
+        }
+        
+        commands.push(...encoder.encode('--------------------------------\n'));
+        
+        // Footer
+        commands.push(...this.ESC_POS.ALIGN_CENTER);
+        commands.push(...this.ESC_POS.BOLD_ON);
+        commands.push(...encoder.encode('\n★ TERIMA KASIH ★\n'));
+        commands.push(...this.ESC_POS.BOLD_OFF);
+        commands.push(...encoder.encode('Atas Kunjungan Anda\n'));
+        commands.push(...encoder.encode('Selamat Menikmati Hidangan\n\n'));
+        commands.push(...encoder.encode('~ Dapoer Teras Obor ~\n'));
+        commands.push(...encoder.encode(`Lembar ${copyNum}/${totalCopies} - ${copyLabel}\n`));
+        commands.push(...encoder.encode('================================\n'));
+        commands.push(...this.ESC_POS.FEED_LINES(4));
+        
+        // Cut paper
+        commands.push(...this.ESC_POS.CUT_PAPER);
+        
+        return commands;
+    },
+    
+    // Format number with thousands separator
+    formatNumber(num) {
+        return new Intl.NumberFormat('id-ID').format(num || 0);
+    },
+    
+    // Auto-print receipt with 3 copies (for successful payment)
+    async autoPrintReceipt(order, copies = 3) {
+        console.log('PrinterManager: Auto-printing receipt for order', order.order_number);
+        
+        for (let i = 1; i <= copies; i++) {
+            const commands = this.buildReceiptCommands(order, i, copies);
+            const success = await this.printReceipt(commands);
+            
+            if (!success && i === 1) {
+                // If first print fails, the rest will be in queue too
+                // Add remaining copies to queue
+                for (let j = i + 1; j <= copies; j++) {
+                    const remainingCommands = this.buildReceiptCommands(order, j, copies);
+                    this.addToPendingQueue(remainingCommands);
+                }
+                break;
+            }
+            
+            // Delay between prints
+            if (i < copies && success) {
+                await new Promise(resolve => setTimeout(resolve, 800));
+            }
         }
     },
     
@@ -307,6 +631,18 @@ const PrinterManager = {
         const statusDot = document.getElementById('printer-status-dot');
         const actionBtn = document.getElementById('printer-action-btn');
         const autoStatus = document.getElementById('printer-auto-status');
+        
+        // Update pending count indicator if exists
+        const pendingCount = document.getElementById('printer-pending-count');
+        if (pendingCount) {
+            const count = this.getPendingCount();
+            if (count > 0) {
+                pendingCount.textContent = count;
+                pendingCount.classList.remove('hidden');
+            } else {
+                pendingCount.classList.add('hidden');
+            }
+        }
         
         if (!statusEl) return;
         
@@ -421,7 +757,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Also try to reconnect when page becomes visible (user returns to tab)
 document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && !PrinterManager.isConnected && PrinterManager.printerName) {
+    if (document.visibilityState === 'visible' && !PrinterManager.isConnected && (PrinterManager.printerName || PrinterManager.printerId)) {
         console.log('PrinterManager: Page visible, attempting reconnect...');
         PrinterManager.reconnectAttempts = 0;
         PrinterManager.autoReconnect();

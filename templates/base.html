@@ -203,6 +203,9 @@
         {% endwith %}
     </div>
     
+    <!-- Include Global Printer Manager for auto-connect across all pages -->
+    <script src="{{ url_for('static', filename='js/printer.js') }}"></script>
+    
     <script>
         // Auto dismiss toasts
         setTimeout(() => {

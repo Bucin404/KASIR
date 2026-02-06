@@ -174,9 +174,39 @@
         </div>
     </div>
     
+    <!-- Include Printer Manager -->
+    <script src="{{ url_for('static', filename='js/printer.js') }}"></script>
+    
     <script>
         const snapToken = "{{ snap_token }}";
         const orderId = {{ order.id }};
+        
+        // Order data for printing
+        const orderData = {
+            id: {{ order.id }},
+            order_number: "{{ order.order_number }}",
+            customer_name: "{{ order.customer_name or '' }}",
+            table: "{{ order.table.number if order.table else '' }}",
+            subtotal: {{ order.subtotal }},
+            tax: {{ order.tax }},
+            discount: {{ order.discount }},
+            total: {{ order.total }},
+            items: [
+                {% for item in order.items %}
+                {
+                    name: "{{ item.name }}",
+                    quantity: {{ item.quantity }},
+                    price: {{ item.price }},
+                    subtotal: {{ item.subtotal }}
+                }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ],
+            payment: {
+                payment_method: "Online",
+                paid_amount: {{ order.total }},
+                change_amount: 0
+            }
+        };
         
         function openPayment() {
             if (!snapToken) {
@@ -189,9 +219,16 @@
                     console.log('Payment success:', result);
                     updatePaymentStatus('paid', result);
                     showStatus('success');
+                    
+                    // Auto-print receipt using PrinterManager
+                    if (typeof PrinterManager !== 'undefined') {
+                        console.log('Auto-printing receipt for online payment...');
+                        PrinterManager.autoPrintReceipt(orderData, 3);
+                    }
+                    
                     setTimeout(() => {
                         window.location.href = "{{ url_for('orders') }}";
-                    }, 2000);
+                    }, 3000);  // Increased to allow printing time
                 },
                 onPending: function(result) {
                     console.log('Payment pending:', result);

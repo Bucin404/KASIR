@@ -429,11 +429,22 @@ class Discount(db.Model):
         if not self.is_active:
             return False, "Promo tidak aktif"
         
-        # Check date range
-        if self.start_date and now < self.start_date:
-            return False, "Promo belum dimulai"
-        if self.end_date and now > self.end_date:
-            return False, "Promo sudah berakhir"
+        # Check date range - handle both naive and aware datetime comparison
+        if self.start_date:
+            start = self.start_date
+            # Make naive datetime timezone-aware (assume UTC)
+            if start.tzinfo is None:
+                start = start.replace(tzinfo=timezone.utc)
+            if now < start:
+                return False, "Promo belum dimulai"
+        
+        if self.end_date:
+            end = self.end_date
+            # Make naive datetime timezone-aware (assume UTC)
+            if end.tzinfo is None:
+                end = end.replace(tzinfo=timezone.utc)
+            if now > end:
+                return False, "Promo sudah berakhir"
         
         # Check usage limit
         if self.usage_limit and self.usage_count >= self.usage_limit:
