@@ -89,21 +89,41 @@
                 </div>
             </div>
             
+            <!-- Printer Station Card -->
+            <div class="bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg p-6 mb-6 text-white">
+                <h2 class="text-lg font-semibold mb-2">🖨️ Printer Station (Rekomendasi)</h2>
+                <p class="text-purple-100 mb-4">
+                    Buka Printer Station di tab terpisah untuk pencetakan yang lebih stabil. 
+                    Halaman ini akan tetap terhubung ke printer meskipun Anda berpindah halaman di tab lain.
+                </p>
+                <a href="{{ url_for('printer_station') }}" target="_blank" 
+                    class="inline-flex items-center gap-2 bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition">
+                    <i class="fas fa-external-link-alt"></i> Buka Printer Station
+                </a>
+            </div>
+            
             <!-- Instructions Card -->
             <div class="bg-blue-50 rounded-lg p-6">
                 <h2 class="text-lg font-semibold mb-4 text-blue-800">📋 Petunjuk Penggunaan</h2>
                 
                 <ol class="list-decimal list-inside space-y-2 text-blue-700">
+                    <li><strong>Direkomendasikan:</strong> Gunakan "Printer Station" di tab terpisah untuk koneksi yang stabil</li>
                     <li>Pastikan printer Bluetooth thermal sudah menyala</li>
                     <li>Klik "Hubungkan Printer" dan pilih printer dari daftar</li>
-                    <li>Setelah terhubung, printer akan tersimpan (nama + MAC address) untuk auto-connect</li>
+                    <li>Setelah terhubung, printer akan tersimpan (nama + MAC address)</li>
                     <li>Gunakan "Test Print" untuk memastikan printer berfungsi</li>
-                    <li>Printer akan otomatis reconnect saat berpindah halaman atau setelah terputus</li>
-                    <li>Struk yang gagal dicetak akan masuk ke antrian pending dan otomatis dicetak saat printer terhubung</li>
+                    <li>Struk yang gagal dicetak akan masuk ke antrian pending di server</li>
+                    <li>Saat printer terhubung kembali, struk pending akan otomatis dicetak</li>
                 </ol>
                 
                 <div class="mt-4 p-3 bg-yellow-100 rounded text-yellow-800 text-sm">
-                    <strong>⚠️ Catatan:</strong> Auto-connect memerlukan browser Chrome/Edge dan printer harus pernah dipair sebelumnya.
+                    <strong>⚠️ Catatan:</strong> Web Bluetooth memutus koneksi saat pindah halaman (batasan browser). 
+                    Gunakan Printer Station untuk menghindari masalah ini.
+                </div>
+                
+                <div class="mt-4 p-3 bg-red-100 rounded text-red-800 text-sm">
+                    <strong>❌ Pesanan dari HP Pembeli:</strong> Printer Bluetooth tidak dapat mencetak dari handphone pembeli. 
+                    Pesanan online harus dicetak dari komputer kasir yang terhubung ke printer.
                 </div>
             </div>
         </div>

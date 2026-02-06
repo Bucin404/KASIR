@@ -1258,6 +1258,14 @@ def admin_printer():
     """Printer management page"""
     return render_template('admin/printer.html')
 
+
+@app.route('/printer-station')
+@login_required
+def printer_station():
+    """Dedicated printer station page - keep this open for reliable printing"""
+    return render_template('printer_station.html')
+
+
 @app.route('/admin/tables')
 @login_required
 @role_required('admin', 'manager')
