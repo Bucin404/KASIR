@@ -18,6 +18,7 @@ const PrinterManager = {
     isProcessingQueue: false,
     lastDisconnectTime: 0,  // Timestamp of last disconnect for cooldown
     disconnectCount: 0,  // Count of disconnects for exponential backoff
+    autoReconnectSupported: true,  // Flag to track if auto-reconnect is supported
     
     // ESC/POS Commands for thermal printers
     ESC_POS: {
@@ -33,16 +34,36 @@ const PrinterManager = {
         FEED_LINES: (n) => [0x1B, 0x64, n],
     },
     
+    // Check if auto-reconnect is supported
+    checkAutoReconnectSupport() {
+        if (!navigator.bluetooth) {
+            this.autoReconnectSupported = false;
+            console.log('PrinterManager: Bluetooth not supported');
+            return false;
+        }
+        if (!navigator.bluetooth.getDevices) {
+            this.autoReconnectSupported = false;
+            console.log('PrinterManager: getDevices() not supported - manual connection required');
+            return false;
+        }
+        this.autoReconnectSupported = true;
+        return true;
+    },
+    
     // Initialize printer manager
     async init() {
         console.log('PrinterManager: Initializing...');
+        // Check if auto-reconnect is supported
+        this.checkAutoReconnectSupport();
         // Load pending queue from localStorage
         this.loadPendingQueue();
         await this.loadSavedPrinter();
         this.updateStatusUI();
         
-        // Start background reconnect checker
-        this.startReconnectChecker();
+        // Start background reconnect checker only if supported
+        if (this.autoReconnectSupported) {
+            this.startReconnectChecker();
+        }
     },
     
     // Load pending queue from localStorage
@@ -139,8 +160,22 @@ const PrinterManager = {
         }
     },
     
+    // Check if reconnect should be attempted
+    shouldAttemptReconnect() {
+        return !this.isConnected && 
+               (this.printerName || this.printerId) && 
+               this.reconnectAttempts < this.maxReconnectAttempts && 
+               this.autoReconnectSupported;
+    },
+    
     // Start background reconnect checker
     startReconnectChecker() {
+        // Don't start if auto-reconnect is not supported
+        if (!this.autoReconnectSupported) {
+            console.log('PrinterManager: Auto-reconnect not supported, skipping background checker');
+            return;
+        }
+        
         // Clear existing interval
         if (this.reconnectInterval) {
             clearInterval(this.reconnectInterval);
@@ -148,11 +183,19 @@ const PrinterManager = {
         
         // Check every 5 seconds if we need to reconnect
         this.reconnectInterval = setInterval(async () => {
-            if (!this.isConnected && (this.printerName || this.printerId) && this.reconnectAttempts < this.maxReconnectAttempts) {
+            if (this.shouldAttemptReconnect()) {
                 console.log('PrinterManager: Background reconnect attempt', this.reconnectAttempts + 1);
                 await this.autoReconnect();
             }
         }, 5000);
+    },
+    
+    // Stop background reconnect checker
+    stopReconnectChecker() {
+        if (this.reconnectInterval) {
+            clearInterval(this.reconnectInterval);
+            this.reconnectInterval = null;
+        }
     },
     
     // Load saved printer from database and attempt auto-reconnect
@@ -165,9 +208,14 @@ const PrinterManager = {
                     this.printerName = data.printer_name;
                     this.printerId = data.printer_id;
                     console.log('PrinterManager: Found saved printer:', this.printerName, 'ID:', this.printerId);
-                    // Attempt auto-reconnect immediately
-                    this.updateStatusUI('connecting');
-                    await this.autoReconnect();
+                    // Attempt auto-reconnect immediately only if supported
+                    if (this.autoReconnectSupported) {
+                        this.updateStatusUI('connecting');
+                        await this.autoReconnect();
+                    } else {
+                        // Show last known status with manual connect message
+                        this.updateStatusUI('lastknown');
+                    }
                 }
             }
         } catch (error) {
@@ -177,8 +225,16 @@ const PrinterManager = {
     
     // Auto-reconnect to previously paired device
     async autoReconnect() {
+        // Early exit if auto-reconnect is not supported
+        if (!this.autoReconnectSupported) {
+            this.updateStatusUI('lastknown');
+            return false;
+        }
+        
         if (!navigator.bluetooth) {
             console.log('PrinterManager: Bluetooth not supported');
+            this.autoReconnectSupported = false;
+            this.stopReconnectChecker();
             this.updateStatusUI('lastknown');
             return false;
         }
@@ -186,6 +242,8 @@ const PrinterManager = {
         // Check if getDevices is supported (Chrome 85+)
         if (!navigator.bluetooth.getDevices) {
             console.log('PrinterManager: getDevices() not supported - please click to connect manually');
+            this.autoReconnectSupported = false;
+            this.stopReconnectChecker();
             this.updateStatusUI('lastknown');
             return false;
         }
@@ -702,7 +760,11 @@ const PrinterManager = {
                     actionBtn.className = 'text-xs px-2 py-1 rounded bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors';
                 }
                 if (autoStatus) {
-                    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                    if (!this.autoReconnectSupported) {
+                        // Show message that manual connection is required
+                        autoStatus.textContent = 'Klik untuk hubungkan manual';
+                        autoStatus.classList.remove('hidden');
+                    } else if (this.reconnectAttempts < this.maxReconnectAttempts) {
                         autoStatus.textContent = 'Auto-reconnect aktif...';
                         autoStatus.classList.remove('hidden');
                     } else {
