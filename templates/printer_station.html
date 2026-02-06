@@ -427,17 +427,29 @@
         }
         
         // Check for pending prints from server
+        let lastPendingCount = 0;
+        
         async function checkPendingPrints() {
             try {
                 const response = await fetch('/api/pending-prints');
                 if (response.ok) {
                     const data = await response.json();
                     if (data.success) {
-                        document.getElementById('pendingCount').textContent = data.count;
+                        const currentCount = data.count;
+                        document.getElementById('pendingCount').textContent = currentCount;
+                        
+                        // Flash notification if new prints arrived
+                        if (currentCount > lastPendingCount && currentCount > 0) {
+                            logActivity(`🔔 ${currentCount - lastPendingCount} struk BARU masuk antrian!`, 'warning');
+                            playNotificationSound();
+                            flashPendingIndicator();
+                        }
+                        
+                        lastPendingCount = currentCount;
                         
                         // Auto-process if connected and have pending items
-                        if (isConnected && data.count > 0) {
-                            logActivity(`Ditemukan ${data.count} struk pending`, 'warning');
+                        if (isConnected && currentCount > 0) {
+                            logActivity(`⏳ Memproses ${currentCount} struk pending...`, 'info');
                             await processQueue();
                         }
                     }
@@ -445,6 +457,48 @@
             } catch (error) {
                 console.error('Error checking pending prints:', error);
             }
+        }
+        
+        // Play notification sound
+        function playNotificationSound() {
+            try {
+                // Simple beep using AudioContext
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                gainNode.gain.value = 0.3;
+                
+                oscillator.start();
+                setTimeout(() => oscillator.stop(), 200);
+            } catch (e) {
+                console.log('Audio not available');
+            }
+        }
+        
+        // Flash the pending indicator
+        function flashPendingIndicator() {
+            const pendingEl = document.getElementById('pendingCount');
+            if (pendingEl) {
+                pendingEl.classList.add('animate-ping');
+                setTimeout(() => pendingEl.classList.remove('animate-ping'), 1000);
+            }
+            
+            // Also flash page title
+            let flashCount = 0;
+            const flashInterval = setInterval(() => {
+                document.title = flashCount % 2 === 0 ? '🔔 STRUK BARU!' : '🖨️ Printer Station';
+                flashCount++;
+                if (flashCount >= 6) {
+                    clearInterval(flashInterval);
+                    document.title = isConnected ? '🟢 Printer Station' : '🔴 Printer Station';
+                }
+            }, 500);
         }
         
         // Process print queue
