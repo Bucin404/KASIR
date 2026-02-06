@@ -207,6 +207,104 @@
             }
         };
         
+        // ESC/POS Commands for building receipt data
+        const ESC_POS = {
+            INIT: [0x1B, 0x40],
+            ALIGN_CENTER: [0x1B, 0x61, 0x01],
+            ALIGN_LEFT: [0x1B, 0x61, 0x00],
+            BOLD_ON: [0x1B, 0x45, 0x01],
+            BOLD_OFF: [0x1B, 0x45, 0x00],
+            DOUBLE_HEIGHT: [0x1B, 0x21, 0x10],
+            NORMAL_SIZE: [0x1B, 0x21, 0x00],
+            CUT_PAPER: [0x1D, 0x56, 0x00],
+            FEED_LINE: [0x0A],
+            FEED_LINES: (n) => [0x1B, 0x64, n],
+        };
+        
+        // Format number with thousand separator
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+        
+        // Build receipt commands
+        function buildReceiptCommands(order, copyNum, totalCopies) {
+            const encoder = new TextEncoder();
+            let commands = [];
+            
+            const copyLabels = ['Kasir', 'Pelanggan', 'Dapur'];
+            const copyLabel = copyLabels[copyNum - 1] || `Copy ${copyNum}`;
+            
+            commands.push(...ESC_POS.INIT);
+            commands.push(...ESC_POS.ALIGN_CENTER);
+            commands.push(...ESC_POS.BOLD_ON);
+            commands.push(...encoder.encode('================================\n'));
+            commands.push(...encoder.encode(' DAPOER TERAS OBOR\n'));
+            commands.push(...encoder.encode('================================\n'));
+            commands.push(...ESC_POS.BOLD_OFF);
+            commands.push(...encoder.encode(`[${copyLabel}] ${copyNum}/${totalCopies}\n`));
+            commands.push(...encoder.encode('\n'));
+            
+            commands.push(...ESC_POS.ALIGN_LEFT);
+            commands.push(...encoder.encode(`No: ${order.order_number}\n`));
+            commands.push(...encoder.encode(`Waktu: ${new Date().toLocaleString('id-ID')}\n`));
+            commands.push(...encoder.encode(`Pembayaran: ONLINE\n`));
+            if (order.table) {
+                commands.push(...encoder.encode(`Meja: ${order.table}\n`));
+            }
+            commands.push(...encoder.encode('--------------------------------\n'));
+            
+            if (order.items && order.items.length > 0) {
+                for (const item of order.items) {
+                    commands.push(...encoder.encode(`${item.name}\n`));
+                    commands.push(...encoder.encode(`  x${item.quantity}     Rp ${formatNumber(item.subtotal)}\n`));
+                }
+            }
+            
+            commands.push(...encoder.encode('--------------------------------\n'));
+            commands.push(...encoder.encode(`Subtotal:    Rp ${formatNumber(order.subtotal)}\n`));
+            if (order.discount > 0) {
+                commands.push(...encoder.encode(`Diskon:      Rp ${formatNumber(order.discount)}\n`));
+            }
+            commands.push(...encoder.encode(`Pajak:       Rp ${formatNumber(order.tax)}\n`));
+            commands.push(...ESC_POS.BOLD_ON);
+            commands.push(...encoder.encode(`TOTAL:       Rp ${formatNumber(order.total)}\n`));
+            commands.push(...ESC_POS.BOLD_OFF);
+            commands.push(...encoder.encode('--------------------------------\n'));
+            commands.push(...encoder.encode(`Dibayar:     Rp ${formatNumber(order.total)}\n`));
+            commands.push(...encoder.encode('\n'));
+            commands.push(...ESC_POS.ALIGN_CENTER);
+            commands.push(...encoder.encode('*** LUNAS ***\n'));
+            commands.push(...encoder.encode('\nTerima kasih!\n'));
+            commands.push(...encoder.encode('================================\n'));
+            commands.push(...ESC_POS.FEED_LINES(4));
+            commands.push(...ESC_POS.CUT_PAPER);
+            
+            return commands;
+        }
+        
+        // Save receipt to server queue for Printer Station
+        async function saveReceiptToServerQueue(order, copies = 3) {
+            try {
+                for (let i = 1; i <= copies; i++) {
+                    const commands = buildReceiptCommands(order, i, copies);
+                    
+                    await fetch('/api/pending-prints', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            order_id: order.id,
+                            receipt_data: commands,
+                            copies: copies,
+                            current_copy: i
+                        })
+                    });
+                }
+                console.log(`Receipt saved to server queue (${copies} copies)`);
+            } catch (error) {
+                console.error('Error saving receipt to queue:', error);
+            }
+        }
+        
         function openPayment() {
             if (!snapToken) {
                 showStatus('error');
@@ -219,17 +317,14 @@
                     updatePaymentStatus('paid', result);
                     showStatus('success');
                     
-                    // Auto-print receipt using PrinterManager
-                    if (typeof PrinterManager !== 'undefined') {
-                        console.log('Auto-printing receipt for online payment...');
-                        PrinterManager.autoPrintReceipt(orderData, 3);
-                    }
+                    // Save receipt to server queue for Printer Station
+                    console.log('Saving receipt to server queue for online payment...');
+                    saveReceiptToServerQueue(orderData, 3);
                     
-                    // Calculate timeout based on print copies (1.5s per copy + 3s buffer)
-                    const printTimeout = 3 * 1500 + 3000;  // ~7.5 seconds for 3 copies
+                    // Redirect after a short delay
                     setTimeout(() => {
                         window.location.href = "{{ url_for('orders') }}";
-                    }, printTimeout);
+                    }, 3000);
                 },
                 onPending: function(result) {
                     console.log('Payment pending:', result);
