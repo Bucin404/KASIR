@@ -2,7 +2,7 @@
 
 {% block title %}Manajemen Printer - Dapoer Teras Obor{% endblock %}
 
-{% block content %}
+{% block body %}
 <div class="flex min-h-screen bg-gray-100">
     {% include 'partials/_sidebar.html' %}
     
@@ -94,6 +94,8 @@
     let autoConnectInterval = null;
     let reconnectAttempts = 0;
     const MAX_RECONNECT_ATTEMPTS = 10;
+    let savedPrinterId = null;
+    let savedPrinterName = null;
     
     // Update UI based on connection state
     function updateUI() {
@@ -118,7 +120,7 @@
         } else {
             indicator.className = 'w-4 h-4 rounded-full bg-gray-400';
             statusText.textContent = 'Tidak Terhubung';
-            printerNameEl.textContent = '-';
+            printerNameEl.textContent = savedPrinterName || '-';
             btnConnect.classList.remove('hidden');
             btnDisconnect.classList.add('hidden');
             btnTestPrint.disabled = true;
@@ -140,8 +142,8 @@
             
             await connectToDevice();
             
-            // Save printer name to database
-            savePrinterToDatabase(bluetoothDevice.name);
+            // Save printer name and ID to database
+            savePrinterToDatabase(bluetoothDevice.name, bluetoothDevice.id);
             
         } catch (error) {
             console.error('Connection error:', error);
@@ -195,12 +197,14 @@
         if (confirm('Yakin ingin melupakan printer ini?')) {
             await disconnectPrinter();
             bluetoothDevice = null;
+            savedPrinterId = null;
+            savedPrinterName = null;
             
             // Clear from database
             fetch('/api/printer-status', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ printer_name: '' })
+                body: JSON.stringify({ printer_name: '', printer_id: '' })
             });
             
             document.getElementById('savedPrinter').textContent = '-';
@@ -252,14 +256,16 @@
     }
     
     // Save printer to database
-    async function savePrinterToDatabase(name) {
+    async function savePrinterToDatabase(name, id) {
         try {
             await fetch('/api/printer-status', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ printer_name: name })
+                body: JSON.stringify({ printer_name: name, printer_id: id })
             });
-            document.getElementById('savedPrinter').textContent = name;
+            savedPrinterName = name;
+            savedPrinterId = id;
+            document.getElementById('savedPrinter').textContent = name + ' (' + id + ')';
         } catch (error) {
             console.error('Save error:', error);
         }
@@ -271,13 +277,46 @@
             const response = await fetch('/api/printer-status');
             const data = await response.json();
             if (data.printer_name) {
-                document.getElementById('savedPrinter').textContent = data.printer_name;
-                return data.printer_name;
+                savedPrinterName = data.printer_name;
+                savedPrinterId = data.printer_id;
+                document.getElementById('savedPrinter').textContent = data.printer_name + (data.printer_id ? ' (' + data.printer_id + ')' : '');
+                return { name: data.printer_name, id: data.printer_id };
             }
         } catch (error) {
             console.error('Load error:', error);
         }
         return null;
+    }
+    
+    // Auto-reconnect using getDevices API
+    async function tryAutoConnect() {
+        if (!navigator.bluetooth?.getDevices) {
+            console.log('getDevices API not supported');
+            return false;
+        }
+        
+        try {
+            const devices = await navigator.bluetooth.getDevices();
+            console.log('Found paired devices:', devices.length);
+            
+            for (const device of devices) {
+                console.log('Checking device:', device.name, device.id);
+                // Match by ID (more reliable) or name
+                if ((savedPrinterId && device.id === savedPrinterId) || 
+                    (savedPrinterName && device.name === savedPrinterName)) {
+                    console.log('Found matching device, attempting connection...');
+                    bluetoothDevice = device;
+                    bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
+                    
+                    // Try to connect
+                    await connectToDevice();
+                    return true;
+                }
+            }
+        } catch (error) {
+            console.log('Auto-connect attempt failed:', error.message);
+        }
+        return false;
     }
     
     // Auto-reconnect logic
@@ -294,23 +333,9 @@
             document.getElementById('autoReconnectAttempts').textContent = reconnectAttempts;
             document.getElementById('autoConnectText').textContent = `Auto-connect: Mencoba (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})...`;
             
-            try {
-                // Try to reconnect using getDevices API
-                if (navigator.bluetooth.getDevices) {
-                    const devices = await navigator.bluetooth.getDevices();
-                    const savedName = document.getElementById('savedPrinter').textContent;
-                    
-                    for (const device of devices) {
-                        if (device.name === savedName) {
-                            bluetoothDevice = device;
-                            bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
-                            await connectToDevice();
-                            return;
-                        }
-                    }
-                }
-            } catch (error) {
-                console.log('Auto-reconnect attempt failed:', error.message);
+            const success = await tryAutoConnect();
+            if (success) {
+                stopAutoReconnect();
             }
         }, 5000);
     }
@@ -320,7 +345,7 @@
             clearInterval(autoConnectInterval);
             autoConnectInterval = null;
         }
-        document.getElementById('autoConnectText').textContent = 'Auto-connect: Aktif';
+        document.getElementById('autoConnectText').textContent = isConnected ? 'Auto-connect: Terhubung' : 'Auto-connect: Aktif';
     }
     
     // Toast notification
@@ -345,28 +370,18 @@
     
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', async () => {
-        const savedName = await loadSavedPrinter();
+        const saved = await loadSavedPrinter();
         
-        if (savedName && navigator.bluetooth?.getDevices) {
+        if (saved && (saved.name || saved.id)) {
             document.getElementById('statusText').textContent = 'Auto-connecting...';
             document.getElementById('statusIndicator').className = 'w-4 h-4 rounded-full bg-yellow-500 animate-pulse';
             
-            try {
-                const devices = await navigator.bluetooth.getDevices();
-                for (const device of devices) {
-                    if (device.name === savedName) {
-                        bluetoothDevice = device;
-                        bluetoothDevice.addEventListener('gattserverdisconnected', onDisconnected);
-                        await connectToDevice();
-                        return;
-                    }
-                }
-            } catch (error) {
-                console.log('Initial auto-connect failed:', error.message);
-            }
+            const success = await tryAutoConnect();
             
-            // Start background reconnect
-            startAutoReconnect();
+            if (!success) {
+                // Start background reconnect
+                startAutoReconnect();
+            }
         }
         
         updateUI();

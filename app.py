@@ -125,6 +125,20 @@ def run_migrations():
                 conn.commit()
             print("Added item_status column to order_items table")
     
+    # Check if users table exists and add printer columns if missing
+    if 'users' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('users')]
+        if 'printer_name' not in columns:
+            with db.engine.connect() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN printer_name VARCHAR(100)"))
+                conn.commit()
+            print("Added printer_name column to users table")
+        if 'printer_id' not in columns:
+            with db.engine.connect() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN printer_id VARCHAR(100)"))
+                conn.commit()
+            print("Added printer_id column to users table")
+    
     # Check if cart table exists (new feature)
     if 'cart' not in inspector.get_table_names():
         # db.create_all will handle this
@@ -1647,25 +1661,30 @@ def api_update_order_kitchen_status(order_id):
 @app.route('/api/printer-status')
 @login_required
 def get_printer_status():
-    """Get saved printer name for current user"""
+    """Get saved printer info for current user"""
     return jsonify({
         'success': True,
-        'printer_name': current_user.printer_name
+        'printer_name': current_user.printer_name,
+        'printer_id': current_user.printer_id
     })
 
 @app.route('/api/printer-status', methods=['POST'])
 @login_required
 def save_printer_status():
-    """Save printer name to database for current user"""
+    """Save printer info to database for current user"""
     data = request.get_json()
     printer_name = data.get('printer_name')
+    printer_id = data.get('printer_id')
     
     current_user.printer_name = printer_name
+    if printer_id is not None:
+        current_user.printer_id = printer_id
     db.session.commit()
     
     return jsonify({
         'success': True,
-        'printer_name': printer_name
+        'printer_name': printer_name,
+        'printer_id': printer_id
     })
 
 # Reports
