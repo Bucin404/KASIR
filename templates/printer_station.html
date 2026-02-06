@@ -91,6 +91,14 @@
                 </div>
             </div>
             
+            <!-- Auto-reconnect status -->
+            <div id="autoReconnectStatus" class="mt-3 p-3 rounded-xl bg-blue-500/20 border border-blue-500/30 hidden">
+                <div class="flex items-center gap-2">
+                    <div class="animate-spin rounded-full h-4 w-4 border-2 border-blue-400 border-t-transparent"></div>
+                    <span id="autoReconnectText" class="text-sm text-blue-300">Mencoba auto-connect...</span>
+                </div>
+            </div>
+            
             <div class="mt-4 flex flex-wrap gap-3">
                 <button id="btnConnect" onclick="connectPrinter()" 
                     class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition flex items-center justify-center gap-2">
@@ -101,10 +109,22 @@
                     class="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-medium transition flex items-center justify-center gap-2 hidden">
                     <i class="fas fa-unlink"></i> Putuskan
                 </button>
+                
+                <button id="btnReconnect" onclick="tryAutoReconnect()" 
+                    class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-3 rounded-xl font-medium transition flex items-center justify-center gap-2 hidden">
+                    <i class="fas fa-sync"></i> Reconnect
+                </button>
+            </div>
+            
+            <div id="savedPrinterInfo" class="mt-3 p-3 rounded-xl bg-green-500/20 border border-green-500/30 hidden">
+                <p class="text-sm text-green-300">
+                    <i class="fas fa-memory"></i> Printer tersimpan: <span id="savedPrinterName" class="font-semibold">-</span>
+                </p>
+                <p class="text-xs text-green-400/70 mt-1">Auto-reconnect akan mencoba menghubungkan printer ini</p>
             </div>
             
             <p class="text-xs text-gray-500 mt-3">
-                <i class="fas fa-lightbulb"></i> Tips: Gunakan browser Chrome atau Edge untuk koneksi Bluetooth
+                <i class="fas fa-lightbulb"></i> Tips: Gunakan browser Chrome atau Edge untuk auto-reconnect
             </p>
         </div>
         
@@ -183,6 +203,13 @@
         let printedCount = 0;
         let checkInterval = null;
         let isProcessing = false; // Prevent race condition
+        let autoReconnectInterval = null;
+        let reconnectAttempts = 0;
+        const MAX_RECONNECT_ATTEMPTS = 10;
+        const RECONNECT_INTERVAL = 3000; // 3 seconds
+        
+        // Saved printer info (from localStorage)
+        const SAVED_PRINTER_KEY = 'printer_station_saved_device';
         
         // ESC/POS Commands
         const ESC_POS = {
@@ -229,8 +256,14 @@
             const printerName = document.getElementById('printerName');
             const btnConnect = document.getElementById('btnConnect');
             const btnDisconnect = document.getElementById('btnDisconnect');
+            const btnReconnect = document.getElementById('btnReconnect');
             const btnTestPrint = document.getElementById('btnTestPrint');
             const btnProcessQueue = document.getElementById('btnProcessQueue');
+            const savedPrinterInfo = document.getElementById('savedPrinterInfo');
+            const savedPrinterName = document.getElementById('savedPrinterName');
+            
+            // Check for saved printer
+            const savedPrinter = getSavedPrinter();
             
             if (isConnected && device) {
                 statusDot.className = 'w-6 h-6 rounded-full bg-green-500 pulse-green';
@@ -239,8 +272,10 @@
                 printerName.textContent = device.name || 'Printer';
                 btnConnect.classList.add('hidden');
                 btnDisconnect.classList.remove('hidden');
+                btnReconnect.classList.add('hidden');
                 btnTestPrint.disabled = false;
                 btnProcessQueue.disabled = false;
+                savedPrinterInfo.classList.add('hidden');
             } else {
                 statusDot.className = 'w-6 h-6 rounded-full bg-gray-500';
                 statusText.textContent = 'Tidak Terhubung';
@@ -250,6 +285,50 @@
                 btnDisconnect.classList.add('hidden');
                 btnTestPrint.disabled = true;
                 btnProcessQueue.disabled = true;
+                
+                // Show reconnect button if we have a saved printer
+                if (savedPrinter) {
+                    btnReconnect.classList.remove('hidden');
+                    savedPrinterInfo.classList.remove('hidden');
+                    savedPrinterName.textContent = savedPrinter.name;
+                } else {
+                    btnReconnect.classList.add('hidden');
+                    savedPrinterInfo.classList.add('hidden');
+                }
+            }
+        }
+        
+        // Save printer to localStorage
+        function savePrinterToLocal(name, id) {
+            const printerInfo = { name, id, savedAt: new Date().toISOString() };
+            localStorage.setItem(SAVED_PRINTER_KEY, JSON.stringify(printerInfo));
+            logActivity(`Printer "${name}" tersimpan untuk auto-reconnect`, 'success');
+        }
+        
+        // Get saved printer from localStorage
+        function getSavedPrinter() {
+            try {
+                const saved = localStorage.getItem(SAVED_PRINTER_KEY);
+                return saved ? JSON.parse(saved) : null;
+            } catch (e) {
+                return null;
+            }
+        }
+        
+        // Clear saved printer
+        function clearSavedPrinter() {
+            localStorage.removeItem(SAVED_PRINTER_KEY);
+        }
+        
+        // Show/hide auto-reconnect status
+        function showAutoReconnectStatus(show, message = 'Mencoba auto-connect...') {
+            const el = document.getElementById('autoReconnectStatus');
+            const textEl = document.getElementById('autoReconnectText');
+            if (show) {
+                el.classList.remove('hidden');
+                textEl.textContent = message;
+            } else {
+                el.classList.add('hidden');
             }
         }
         
@@ -298,10 +377,14 @@
                                 characteristic = char;
                                 isConnected = true;
                                 
-                                // Save to database
+                                // Save to database AND localStorage
                                 await savePrinterStatus(device.name, device.id);
+                                savePrinterToLocal(device.name, device.id);
                                 
                                 logActivity(`Terhubung ke ${device.name}!`, 'success');
+                                showAutoReconnectStatus(false);
+                                stopAutoReconnect();
+                                reconnectAttempts = 0;
                                 updateUI();
                                 
                                 // Start checking for pending prints
@@ -341,6 +424,164 @@
             logActivity('Printer terputus', 'warning');
             updateUI();
             stopPendingChecker();
+            
+            // Start auto-reconnect if we have saved printer
+            const savedPrinter = getSavedPrinter();
+            if (savedPrinter) {
+                logActivity('Memulai auto-reconnect...', 'info');
+                startAutoReconnect();
+            }
+        }
+        
+        // Try to auto-reconnect using getDevices API
+        async function tryAutoReconnect() {
+            // Check if getDevices is supported
+            if (!navigator.bluetooth || !navigator.bluetooth.getDevices) {
+                logActivity('Auto-reconnect tidak didukung browser ini', 'warning');
+                showAutoReconnectStatus(false);
+                return false;
+            }
+            
+            const savedPrinter = getSavedPrinter();
+            if (!savedPrinter) {
+                logActivity('Tidak ada printer tersimpan', 'info');
+                showAutoReconnectStatus(false);
+                return false;
+            }
+            
+            showAutoReconnectStatus(true, `Mencari ${savedPrinter.name}... (${reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+            
+            try {
+                // Get previously paired devices
+                const devices = await navigator.bluetooth.getDevices();
+                logActivity(`Ditemukan ${devices.length} device tersimpan`, 'info');
+                
+                // Find our saved printer
+                const targetDevice = devices.find(d => 
+                    d.name === savedPrinter.name || d.id === savedPrinter.id
+                );
+                
+                if (!targetDevice) {
+                    logActivity(`Printer "${savedPrinter.name}" tidak ditemukan dalam daftar device`, 'warning');
+                    showAutoReconnectStatus(false);
+                    return false;
+                }
+                
+                logActivity(`Mencoba reconnect ke ${targetDevice.name}...`, 'info');
+                
+                // Try to connect
+                device = targetDevice;
+                device.addEventListener('gattserverdisconnected', onDisconnected);
+                
+                // Use watchAdvertisements if available for better connection
+                if (targetDevice.watchAdvertisements) {
+                    try {
+                        const abortController = new AbortController();
+                        await targetDevice.watchAdvertisements({ signal: abortController.signal });
+                        
+                        // Wait for advertisement
+                        await new Promise((resolve, reject) => {
+                            const timeout = setTimeout(() => {
+                                abortController.abort();
+                                reject(new Error('Timeout menunggu advertisement'));
+                            }, 5000);
+                            
+                            targetDevice.addEventListener('advertisementreceived', () => {
+                                clearTimeout(timeout);
+                                abortController.abort();
+                                resolve();
+                            }, { once: true });
+                        });
+                    } catch (e) {
+                        // watchAdvertisements might fail, continue with direct connect
+                        console.log('watchAdvertisements failed, trying direct connect:', e);
+                    }
+                }
+                
+                showAutoReconnectStatus(true, `Menghubungkan ke ${targetDevice.name}...`);
+                const server = await device.gatt.connect();
+                
+                // Find writable characteristic
+                const serviceUUIDs = [
+                    '000018f0-0000-1000-8000-00805f9b34fb',
+                    '0000ff00-0000-1000-8000-00805f9b34fb',
+                    '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+                    '0000ffe0-0000-1000-8000-00805f9b34fb'
+                ];
+                
+                for (const uuid of serviceUUIDs) {
+                    try {
+                        const service = await server.getPrimaryService(uuid);
+                        const chars = await service.getCharacteristics();
+                        
+                        for (const char of chars) {
+                            if (char.properties.write || char.properties.writeWithoutResponse) {
+                                characteristic = char;
+                                isConnected = true;
+                                
+                                logActivity(`Auto-reconnect berhasil ke ${device.name}!`, 'success');
+                                showAutoReconnectStatus(false);
+                                stopAutoReconnect();
+                                reconnectAttempts = 0;
+                                updateUI();
+                                
+                                // Start checking for pending prints
+                                startPendingChecker();
+                                
+                                // Process any pending prints immediately
+                                setTimeout(() => processQueue(), 2000);
+                                
+                                return true;
+                            }
+                        }
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+                throw new Error('Tidak ditemukan karakteristik yang dapat ditulis');
+                
+            } catch (error) {
+                logActivity(`Auto-reconnect gagal: ${error.message}`, 'error');
+                showAutoReconnectStatus(false);
+                return false;
+            }
+        }
+        
+        // Start auto-reconnect loop
+        function startAutoReconnect() {
+            stopAutoReconnect();
+            reconnectAttempts = 0;
+            
+            autoReconnectInterval = setInterval(async () => {
+                if (isConnected) {
+                    stopAutoReconnect();
+                    return;
+                }
+                
+                reconnectAttempts++;
+                
+                if (reconnectAttempts > MAX_RECONNECT_ATTEMPTS) {
+                    logActivity(`Auto-reconnect berhenti setelah ${MAX_RECONNECT_ATTEMPTS} percobaan`, 'warning');
+                    stopAutoReconnect();
+                    showAutoReconnectStatus(false);
+                    return;
+                }
+                
+                await tryAutoReconnect();
+                
+            }, RECONNECT_INTERVAL);
+            
+            // Try immediately
+            tryAutoReconnect();
+        }
+        
+        // Stop auto-reconnect loop
+        function stopAutoReconnect() {
+            if (autoReconnectInterval) {
+                clearInterval(autoReconnectInterval);
+                autoReconnectInterval = null;
+            }
         }
         
         // Save printer status to database
@@ -599,16 +840,41 @@
         }
         
         // Initialize on load
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             logActivity('Printer Station dimulai', 'info');
             updateUI();
             checkPendingPrints();
+            
+            // Check for saved printer and try auto-connect
+            const savedPrinter = getSavedPrinter();
+            if (savedPrinter) {
+                logActivity(`Printer tersimpan: ${savedPrinter.name}`, 'info');
+                
+                // Try auto-reconnect on page load
+                setTimeout(() => {
+                    if (!isConnected) {
+                        logActivity('Mencoba auto-connect...', 'info');
+                        startAutoReconnect();
+                    }
+                }, 1000);
+            }
             
             // Warn before closing
             window.addEventListener('beforeunload', (e) => {
                 if (isConnected) {
                     e.preventDefault();
                     e.returnValue = 'Printer masih terhubung. Yakin ingin menutup?';
+                }
+            });
+            
+            // Handle visibility change - try reconnect when page becomes visible
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible' && !isConnected) {
+                    const savedPrinter = getSavedPrinter();
+                    if (savedPrinter) {
+                        logActivity('Tab aktif kembali, mencoba reconnect...', 'info');
+                        tryAutoReconnect();
+                    }
                 }
             });
         });
