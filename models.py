@@ -487,3 +487,41 @@ class Discount(db.Model):
     
     def __repr__(self):
         return f'<Discount {self.code}>'
+
+
+class PendingPrint(db.Model):
+    """Server-side pending print queue for reliable printing across page navigations"""
+    __tablename__ = 'pending_prints'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'), nullable=True)
+    receipt_data = db.Column(db.Text, nullable=False)  # JSON encoded ESC/POS commands
+    copies = db.Column(db.Integer, default=3)  # Number of copies to print
+    current_copy = db.Column(db.Integer, default=1)  # Current copy being printed
+    status = db.Column(db.String(20), default='pending')  # pending, printing, completed, failed
+    retry_count = db.Column(db.Integer, default=0)
+    error_message = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    updated_at = db.Column(db.DateTime, default=utc_now, onupdate=utc_now)
+    printed_at = db.Column(db.DateTime, nullable=True)
+    
+    # Relationship
+    order = db.relationship('Order', backref=db.backref('pending_prints', lazy='dynamic'))
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'order_id': self.order_id,
+            'receipt_data': self.receipt_data,
+            'copies': self.copies,
+            'current_copy': self.current_copy,
+            'status': self.status,
+            'retry_count': self.retry_count,
+            'error_message': self.error_message,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'printed_at': self.printed_at.isoformat() if self.printed_at else None
+        }
+    
+    def __repr__(self):
+        return f'<PendingPrint {self.id} order={self.order_id} status={self.status}>'

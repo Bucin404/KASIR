@@ -88,32 +88,68 @@ const PrinterManager = {
         }
     },
     
-    // Load pending queue from localStorage
+    // Load pending queue from localStorage and server
     loadPendingQueue() {
+        // First load from localStorage (for backward compatibility)
         try {
             const saved = localStorage.getItem('pendingPrintQueue');
             if (saved) {
                 this.pendingPrintQueue = JSON.parse(saved);
-                console.log('PrinterManager: Loaded', this.pendingPrintQueue.length, 'pending receipts from storage');
-                
-                // Notify user if there are pending receipts
-                if (this.pendingPrintQueue.length > 0) {
-                    // Delay notification to allow page to fully load
-                    setTimeout(() => {
-                        this.showNotification(
-                            `Ada ${this.pendingPrintQueue.length} struk menunggu dicetak. Hubungkan printer untuk mencetak.`, 
-                            'warning'
+                console.log('PrinterManager: Loaded', this.pendingPrintQueue.length, 'pending receipts from localStorage');
+            }
+        } catch (error) {
+            console.error('PrinterManager: Error loading pending queue from localStorage:', error);
+            this.pendingPrintQueue = [];
+        }
+        
+        // Also load from server (more reliable across page navigations)
+        this.loadPendingFromServer();
+    },
+    
+    // Load pending prints from server
+    async loadPendingFromServer() {
+        try {
+            const response = await fetch('/api/pending-prints');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.pending_prints && data.pending_prints.length > 0) {
+                    // Merge server queue with local queue (avoid duplicates)
+                    for (const serverItem of data.pending_prints) {
+                        // Check if this item already exists in local queue
+                        const exists = this.pendingPrintQueue.some(localItem => 
+                            localItem.serverId === serverItem.id
                         );
-                    }, 2000);
+                        if (!exists) {
+                            this.pendingPrintQueue.push({
+                                id: `server-${serverItem.id}`,
+                                serverId: serverItem.id,  // Track server ID for API calls
+                                data: JSON.parse(serverItem.receipt_data),
+                                addedAt: serverItem.created_at,
+                                retryCount: serverItem.retry_count,
+                                isServerItem: true  // Mark as server item
+                            });
+                        }
+                    }
+                    console.log('PrinterManager: Loaded', data.pending_prints.length, 'pending receipts from server');
                 }
             }
         } catch (error) {
-            console.error('PrinterManager: Error loading pending queue:', error);
-            this.pendingPrintQueue = [];
+            console.error('PrinterManager: Error loading pending queue from server:', error);
+        }
+        
+        // Notify user if there are pending receipts
+        const totalCount = this.pendingPrintQueue.length;
+        if (totalCount > 0) {
+            setTimeout(() => {
+                this.showNotification(
+                    `Ada ${totalCount} struk menunggu dicetak. Hubungkan printer untuk mencetak.`, 
+                    'warning'
+                );
+            }, 2000);
         }
     },
     
-    // Save pending queue to localStorage
+    // Save pending queue to localStorage AND server
     savePendingQueue() {
         try {
             localStorage.setItem('pendingPrintQueue', JSON.stringify(this.pendingPrintQueue));
@@ -122,16 +158,44 @@ const PrinterManager = {
         }
     },
     
-    // Add receipt to pending queue
-    addToPendingQueue(receiptData) {
+    // Add receipt to pending queue (local and server)
+    async addToPendingQueue(receiptData, orderId = null) {
         const queueItem = {
-            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,  // More robust ID generation
+            id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
             data: receiptData,
             addedAt: new Date().toISOString(),
             retryCount: 0
         };
+        
+        // Add to local queue
         this.pendingPrintQueue.push(queueItem);
         this.savePendingQueue();
+        
+        // Also save to server for persistence across page navigations
+        try {
+            const response = await fetch('/api/pending-prints', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    order_id: orderId,
+                    receipt_data: receiptData,
+                    copies: 1,
+                    current_copy: 1
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    queueItem.serverId = data.pending_print.id;
+                    queueItem.isServerItem = true;
+                    console.log('PrinterManager: Saved pending print to server, ID:', data.pending_print.id);
+                }
+            }
+        } catch (error) {
+            console.error('PrinterManager: Error saving pending print to server:', error);
+        }
+        
         console.log('PrinterManager: Added receipt to pending queue. Total:', this.pendingPrintQueue.length);
         this.showNotification(`Struk ditambahkan ke antrian (${this.pendingPrintQueue.length} pending)`, 'warning');
     },
@@ -141,14 +205,41 @@ const PrinterManager = {
         return this.pendingPrintQueue.length;
     },
     
+    // Get total pending count (local + server)
+    async getTotalPendingCount() {
+        let count = this.pendingPrintQueue.length;
+        try {
+            const response = await fetch('/api/pending-prints');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    // Don't double count items that are already in local queue
+                    const localServerIds = this.pendingPrintQueue
+                        .filter(item => item.serverId)
+                        .map(item => item.serverId);
+                    const serverOnlyCount = data.pending_prints
+                        .filter(item => !localServerIds.includes(item.id))
+                        .length;
+                    count += serverOnlyCount;
+                }
+            }
+        } catch (error) {
+            console.error('PrinterManager: Error getting server pending count:', error);
+        }
+        return count;
+    },
+    
     // Schedule pending queue processing with retry
     schedulePendingQueueProcessing() {
-        if (this.pendingPrintQueue.length === 0) {
-            console.log('PrinterManager: No pending receipts to schedule');
-            return;
-        }
-        
         console.log('PrinterManager: Scheduling pending queue processing...');
+        
+        // First, reload pending prints from server (in case new items were added from other pages)
+        setTimeout(async () => {
+            if (this.isConnected && this.characteristic) {
+                console.log('PrinterManager: Reloading pending prints from server...');
+                await this.loadPendingFromServer();
+            }
+        }, 1000);
         
         // First attempt after 2 seconds (wait for connection to stabilize)
         setTimeout(async () => {
@@ -206,9 +297,23 @@ const PrinterManager = {
             try {
                 console.log('PrinterManager: Printing pending receipt', item.id);
                 await this.printRaw(item.data);
-                // Remove from queue on success
+                
+                // Remove from local queue on success
                 this.pendingPrintQueue.shift();
                 this.savePendingQueue();
+                
+                // Also mark as completed on server if it's a server item
+                if (item.serverId) {
+                    try {
+                        await fetch(`/api/pending-prints/${item.serverId}/complete`, {
+                            method: 'POST'
+                        });
+                        console.log('PrinterManager: Marked server print as completed:', item.serverId);
+                    } catch (e) {
+                        console.error('PrinterManager: Error marking server print as completed:', e);
+                    }
+                }
+                
                 successCount++;
                 console.log('PrinterManager: Successfully printed pending receipt', item.id);
                 
@@ -217,6 +322,19 @@ const PrinterManager = {
             } catch (error) {
                 console.error('PrinterManager: Failed to print pending receipt:', error);
                 item.retryCount++;
+                
+                // Also update retry count on server if it's a server item
+                if (item.serverId) {
+                    try {
+                        await fetch(`/api/pending-prints/${item.serverId}/fail`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ error_message: error.message })
+                        });
+                    } catch (e) {
+                        console.error('PrinterManager: Error updating server retry count:', e);
+                    }
+                }
                 
                 if (item.retryCount >= 3) {
                     // Move to end of queue after 3 failures

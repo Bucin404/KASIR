@@ -16,7 +16,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from werkzeug.utils import secure_filename
 
 from config import config
-from models import db, User, Role, Permission, Category, MenuItem, Table, Order, OrderItem, Payment, Income, Setting, Cart, CartItem, Discount
+from models import db, User, Role, Permission, Category, MenuItem, Table, Order, OrderItem, Payment, Income, Setting, Cart, CartItem, Discount, PendingPrint
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -1686,6 +1686,111 @@ def save_printer_status():
         'printer_name': printer_name,
         'printer_id': printer_id
     })
+
+
+# ============================================
+# SERVER-SIDE PRINT QUEUE API
+# ============================================
+
+@app.route('/api/pending-prints')
+@login_required
+def get_pending_prints():
+    """Get all pending prints from server-side queue"""
+    pending = PendingPrint.query.filter_by(status='pending').order_by(PendingPrint.created_at).all()
+    return jsonify({
+        'success': True,
+        'pending_prints': [p.to_dict() for p in pending],
+        'count': len(pending)
+    })
+
+
+@app.route('/api/pending-prints', methods=['POST'])
+@login_required
+def add_pending_print():
+    """Add a new pending print to server-side queue"""
+    data = request.get_json()
+    
+    pending = PendingPrint(
+        order_id=data.get('order_id'),
+        receipt_data=json.dumps(data.get('receipt_data', [])),
+        copies=data.get('copies', 3),
+        current_copy=data.get('current_copy', 1),
+        status='pending'
+    )
+    
+    db.session.add(pending)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'pending_print': pending.to_dict()
+    })
+
+
+@app.route('/api/pending-prints/<int:print_id>/complete', methods=['POST'])
+@login_required
+def complete_pending_print(print_id):
+    """Mark a pending print as completed"""
+    pending = PendingPrint.query.get_or_404(print_id)
+    pending.status = 'completed'
+    pending.printed_at = utc_now()
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'Print marked as completed'
+    })
+
+
+@app.route('/api/pending-prints/<int:print_id>/fail', methods=['POST'])
+@login_required
+def fail_pending_print(print_id):
+    """Mark a pending print as failed and increment retry count"""
+    data = request.get_json() or {}
+    pending = PendingPrint.query.get_or_404(print_id)
+    
+    pending.retry_count += 1
+    pending.error_message = data.get('error_message', 'Unknown error')
+    
+    # Mark as permanently failed after 5 retries
+    if pending.retry_count >= 5:
+        pending.status = 'failed'
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'retry_count': pending.retry_count,
+        'status': pending.status
+    })
+
+
+@app.route('/api/pending-prints/<int:print_id>', methods=['DELETE'])
+@login_required
+def delete_pending_print(print_id):
+    """Delete a pending print from queue"""
+    pending = PendingPrint.query.get_or_404(print_id)
+    db.session.delete(pending)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'Print deleted from queue'
+    })
+
+
+@app.route('/api/pending-prints/clear', methods=['POST'])
+@login_required
+def clear_pending_prints():
+    """Clear all pending prints"""
+    PendingPrint.query.filter_by(status='pending').delete()
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'All pending prints cleared'
+    })
+
 
 # Reports
 @app.route('/reports')
