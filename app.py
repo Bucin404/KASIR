@@ -1263,8 +1263,8 @@ def admin_create_menu():
 @login_required
 @role_required('admin', 'manager')
 def admin_printer():
-    """Printer management page"""
-    return render_template('admin/printer.html')
+    """Redirect to Printer Station - the dedicated printer page"""
+    return redirect(url_for('printer_station'))
 
 
 @app.route('/printer-station')
