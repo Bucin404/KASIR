@@ -51,60 +51,50 @@
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold mb-2">🖨️ Printer Station</h1>
             <p class="text-gray-400">Biarkan halaman ini terbuka untuk mencetak struk otomatis</p>
-            <p class="text-sm text-yellow-400 mt-2">
-                <i class="fas fa-exclamation-triangle"></i>
-                Jangan tutup tab ini saat bekerja!
-            </p>
+            <div class="mt-3 p-3 bg-yellow-500/20 rounded-xl text-sm">
+                <p class="text-yellow-300">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>PENTING:</strong> Jangan tutup tab ini saat bekerja!
+                </p>
+                <p class="text-yellow-200 mt-1">
+                    Tab lain bisa digunakan untuk POS, pembayaran, dll.
+                </p>
+            </div>
         </div>
         
-        <!-- Printer Type Selection -->
-        <div class="glass-card rounded-2xl p-6 mb-6">
-            <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                <i class="fas fa-plug"></i> Pilih Jenis Printer
-            </h2>
-            
-            <div class="grid grid-cols-2 gap-4">
-                <button id="btnSelectBluetooth" onclick="selectPrinterType('bluetooth')" 
-                    class="p-4 rounded-xl bg-blue-600 border-2 border-blue-400 text-center transition hover:bg-blue-700">
-                    <i class="fas fa-bluetooth-b text-3xl mb-2"></i>
-                    <p class="font-semibold">Bluetooth</p>
-                    <p class="text-xs text-blue-200">Wireless, perlu browser Chrome</p>
-                </button>
-                
-                <button id="btnSelectUSB" onclick="selectPrinterType('usb')" 
-                    class="p-4 rounded-xl bg-black/30 border-2 border-gray-600 text-center transition hover:bg-black/50">
-                    <i class="fas fa-usb text-3xl mb-2"></i>
-                    <p class="font-semibold">USB</p>
-                    <p class="text-xs text-gray-400">Stabil, direkomendasikan</p>
-                </button>
-            </div>
-            
-            <div id="usbStatus" class="mt-4 p-3 rounded-lg bg-black/30 hidden">
-                <p class="text-sm text-gray-400">
-                    <i class="fas fa-info-circle"></i> 
-                    Status USB: <span id="usbAvailability" class="text-yellow-400">Memeriksa...</span>
-                </p>
+        <!-- Info Card for VPS deployment -->
+        <div class="glass-card rounded-2xl p-4 mb-6 border border-blue-500/30">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-info-circle text-blue-400 mt-1"></i>
+                <div class="text-sm">
+                    <p class="text-blue-300 font-semibold">Mengapa perlu Printer Station?</p>
+                    <p class="text-gray-400 mt-1">
+                        Koneksi Bluetooth akan terputus saat pindah halaman (batasan browser). 
+                        Dengan membuka Printer Station di tab terpisah, koneksi printer tetap aktif 
+                        dan struk akan otomatis dicetak.
+                    </p>
+                </div>
             </div>
         </div>
         
         <!-- Connection Status -->
         <div class="glass-card rounded-2xl p-6 mb-6">
             <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                <i class="fas fa-wifi"></i> Status Koneksi
+                <i class="fas fa-bluetooth-b"></i> Koneksi Printer Bluetooth
             </h2>
             
             <div id="connectionStatus" class="flex items-center gap-4 p-4 rounded-xl bg-black/30">
                 <div id="statusDot" class="w-6 h-6 rounded-full bg-gray-500"></div>
                 <div class="flex-1">
                     <p id="statusText" class="font-semibold text-lg">Tidak Terhubung</p>
-                    <p id="printerName" class="text-sm text-gray-400">Pilih jenis printer dan klik hubungkan</p>
+                    <p id="printerName" class="text-sm text-gray-400">Klik tombol di bawah untuk menghubungkan</p>
                 </div>
             </div>
             
             <div class="mt-4 flex flex-wrap gap-3">
                 <button id="btnConnect" onclick="connectPrinter()" 
                     class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition flex items-center justify-center gap-2">
-                    <i class="fas fa-bluetooth-b" id="connectIcon"></i> <span id="connectText">Hubungkan Printer</span>
+                    <i class="fas fa-bluetooth-b"></i> Hubungkan Printer
                 </button>
                 
                 <button id="btnDisconnect" onclick="disconnectPrinter()" 
@@ -112,19 +102,10 @@
                     <i class="fas fa-unlink"></i> Putuskan
                 </button>
             </div>
-        </div>
-        
-        <!-- USB Device List (shown when USB selected) -->
-        <div id="usbDeviceList" class="glass-card rounded-2xl p-6 mb-6 hidden">
-            <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                <i class="fas fa-list"></i> Printer USB Terdeteksi
-            </h2>
-            <div id="usbDevices" class="space-y-2">
-                <p class="text-gray-400 text-sm">Memuat daftar printer...</p>
-            </div>
-            <button onclick="refreshUSBDevices()" class="mt-4 text-sm text-blue-400 hover:text-blue-300">
-                <i class="fas fa-sync-alt"></i> Refresh Daftar
-            </button>
+            
+            <p class="text-xs text-gray-500 mt-3">
+                <i class="fas fa-lightbulb"></i> Tips: Gunakan browser Chrome atau Edge untuk koneksi Bluetooth
+            </p>
         </div>
         
         <!-- Print Queue Status -->
