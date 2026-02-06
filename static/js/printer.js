@@ -95,6 +95,17 @@ const PrinterManager = {
             if (saved) {
                 this.pendingPrintQueue = JSON.parse(saved);
                 console.log('PrinterManager: Loaded', this.pendingPrintQueue.length, 'pending receipts from storage');
+                
+                // Notify user if there are pending receipts
+                if (this.pendingPrintQueue.length > 0) {
+                    // Delay notification to allow page to fully load
+                    setTimeout(() => {
+                        this.showNotification(
+                            `Ada ${this.pendingPrintQueue.length} struk menunggu dicetak. Hubungkan printer untuk mencetak.`, 
+                            'warning'
+                        );
+                    }, 2000);
+                }
             }
         } catch (error) {
             console.error('PrinterManager: Error loading pending queue:', error);
