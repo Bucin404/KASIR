@@ -1257,7 +1257,7 @@ def update_profile():
 
 @app.route('/profile/change-password', methods=['POST'])
 @login_required
-def change_password():
+def profile_change_password():
     current_password = request.form.get('current_password')
     new_password = request.form.get('new_password')
     confirm_password = request.form.get('confirm_password')
