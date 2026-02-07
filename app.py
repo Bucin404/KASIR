@@ -478,7 +478,7 @@ def index():
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit("20 per minute")  # Brute force protection (reasonable limit)
+@limiter.limit("10 per minute", methods=["POST"])  # Only limit POST (actual login attempts)
 def login():
     if current_user.is_authenticated:
         # Check if force password change is required
