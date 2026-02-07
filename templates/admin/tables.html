@@ -80,6 +80,7 @@
     <div class="glass-card rounded-2xl p-6 w-full max-w-md">
         <h3 class="text-lg font-semibold mb-4">Tambah Meja Baru</h3>
         <form action="{{ url_for('admin_table_add') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm text-gray-400 mb-1">Nomor Meja *</label>
@@ -124,6 +125,7 @@
         <h3 class="text-lg font-semibold mb-2">Hapus Meja <span id="delete-table-number"></span>?</h3>
         <p class="text-sm text-gray-400 mb-6">Tindakan ini tidak dapat dibatalkan.</p>
         <form id="delete-form" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="flex space-x-3">
                 <button type="button" onclick="document.getElementById('delete-modal').classList.add('hidden')" 
                         class="flex-1 py-2.5 rounded-xl bg-white/10 text-gray-300">Batal</button>
