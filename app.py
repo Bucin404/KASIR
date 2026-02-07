@@ -137,6 +137,19 @@ def handle_csrf_error(e):
     flash('Sesi telah berakhir. Silakan coba lagi.', 'danger')
     return redirect(request.referrer or url_for('dashboard'))
 
+# Rate limit error handler
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    """Custom handler for rate limit exceeded"""
+    if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'success': False, 
+            'error': 'Terlalu banyak permintaan. Silakan tunggu sebentar.'
+        }), 429
+    
+    flash('Terlalu banyak permintaan. Silakan tunggu 1 menit dan coba lagi.', 'warning')
+    return redirect(request.referrer or url_for('login'))
+
 # Initialize database and seed data
 def run_migrations():
     """Run database migrations for existing databases"""
@@ -465,7 +478,7 @@ def index():
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit("5 per minute")  # Brute force protection
+@limiter.limit("20 per minute")  # Brute force protection (reasonable limit)
 def login():
     if current_user.is_authenticated:
         # Check if force password change is required
