@@ -121,7 +121,7 @@
                     <h3 class="font-semibold text-white text-sm line-clamp-2 leading-tight mb-2">{{ item.name }}</h3>
                     
                     <!-- Add Button -->
-                    <button onclick="addToCart({{ item.id }}, '{{ item.name|replace("'", "\\'") }}', {{ item.price }}, {{ item.has_spicy_option|lower }}, {{ item.has_temperature_option|lower }})"
+                    <button onclick="addToCart({{ item.id }}, {{ item.name|tojson }}, {{ item.price }}, {{ item.has_spicy_option|lower }}, {{ item.has_temperature_option|lower }})"
                             class="w-full py-2.5 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 text-white text-xs font-semibold flex items-center justify-center space-x-1.5 transition-all duration-200 hover:shadow-lg hover:shadow-primary-500/30 active:scale-95">
                         <i class="fas fa-plus"></i>
                         <span>Tambah</span>
@@ -460,11 +460,20 @@ function addToCart(id, name, price, hasSpicy, hasTemp) {
     }
 }
 
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function showAddedToast(name) {
     // Create toast notification
     const toast = document.createElement('div');
     toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-green-500 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-lg animate-fade-in';
-    toast.innerHTML = `<i class="fas fa-check mr-2"></i>${name} ditambahkan`;
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-check mr-2';
+    toast.appendChild(icon);
+    toast.appendChild(document.createTextNode(name + ' ditambahkan'));
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 2000);
 }
@@ -546,11 +555,11 @@ function updateCartUI() {
         cartItemsEl.innerHTML = cart.map((item, index) => `
             <div class="bg-white/5 rounded-2xl p-3 flex items-center space-x-3 border border-white/5">
                 <div class="flex-1 min-w-0">
-                    <h4 class="font-semibold text-white text-sm truncate">${item.name}</h4>
+                    <h4 class="font-semibold text-white text-sm truncate">${escapeHtml(item.name)}</h4>
                     <p class="text-primary-400 font-bold text-sm">${formatCurrency(item.price * item.quantity)}</p>
                     <div class="flex flex-wrap gap-1 mt-1">
-                        ${item.spice_level && item.spice_level !== 'none' ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">${item.spice_level}</span>` : ''}
-                        ${item.temperature && item.temperature !== 'normal' ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">${item.temperature}</span>` : ''}
+                        ${item.spice_level && item.spice_level !== 'none' ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">${escapeHtml(item.spice_level)}</span>` : ''}
+                        ${item.temperature && item.temperature !== 'normal' ? `<span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">${escapeHtml(item.temperature)}</span>` : ''}
                     </div>
                 </div>
                 <div class="flex items-center space-x-2 shrink-0">
@@ -691,7 +700,8 @@ function closeSuccessModal() {
     document.body.style.overflow = '';
     // Reset modal text
     document.getElementById('success-modal').querySelector('h3').textContent = 'Pesanan Berhasil!';
-    document.getElementById('success-modal').querySelector('p').textContent = 'Pesanan Anda sedang diproses.\nSilakan tunggu di meja Anda.';
+    const pElement = document.getElementById('success-modal').querySelector('p');
+    pElement.innerHTML = 'Pesanan Anda sedang diproses.<br>Silakan tunggu di meja Anda.';
 }
 
 // Initialize cart UI
