@@ -59,6 +59,19 @@ let refreshInterval;
 let countdownInterval;
 let countdown = 5;
 
+// XSS Protection - escape HTML entities
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
 function updateClock() {
     const now = new Date();
     document.getElementById('current-time').textContent = now.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'});
@@ -172,33 +185,33 @@ async function loadOrders() {
                 <div class="glass-card rounded-2xl p-4 border-l-4 ${orderColor}">
                     <div class="flex items-center justify-between mb-3">
                         <div>
-                            <span class="text-lg font-bold">#${order.order_number}</span>
-                            <span class="ml-2 text-sm text-gray-400">${order.created_at}</span>
+                            <span class="text-lg font-bold">#${escapeHtml(order.order_number)}</span>
+                            <span class="ml-2 text-sm text-gray-400">${escapeHtml(order.created_at)}</span>
                         </div>
                         <div class="flex items-center space-x-2">
                             <span class="px-2 py-1 rounded-lg ${order.order_type === 'dine_in' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'} text-xs">
-                                ${order.order_type === 'dine_in' ? 'Meja ' + order.table : 'Takeaway'}
+                                ${order.order_type === 'dine_in' ? 'Meja ' + escapeHtml(order.table) : 'Takeaway'}
                             </span>
                         </div>
                     </div>
                     
                     <div class="text-sm text-gray-400 mb-3">
-                        <i class="fas fa-user mr-1"></i>${order.customer_name}
+                        <i class="fas fa-user mr-1"></i>${escapeHtml(order.customer_name)}
                     </div>
                     
                     <div class="space-y-2 mb-4">
                         ${order.items.map(item => `
                             <div class="flex items-center justify-between p-2 rounded-lg ${getStatusColor(item.item_status)} border">
                                 <div class="flex-1">
-                                    <div class="font-medium">${item.quantity}x ${item.name}</div>
-                                    ${item.spice_level ? `<span class="text-xs">🌶️ ${item.spice_level}</span>` : ''}
-                                    ${item.temperature ? `<span class="text-xs ml-1">${item.temperature === 'hot' ? '🔥' : '❄️'} ${item.temperature}</span>` : ''}
-                                    ${item.notes ? `<div class="text-xs italic opacity-75">${item.notes}</div>` : ''}
+                                    <div class="font-medium">${parseInt(item.quantity)}x ${escapeHtml(item.name)}</div>
+                                    ${item.spice_level ? `<span class="text-xs">🌶️ ${escapeHtml(item.spice_level)}</span>` : ''}
+                                    ${item.temperature ? `<span class="text-xs ml-1">${item.temperature === 'hot' ? '🔥' : '❄️'} ${escapeHtml(item.temperature)}</span>` : ''}
+                                    ${item.notes ? `<div class="text-xs italic opacity-75">${escapeHtml(item.notes)}</div>` : ''}
                                 </div>
                                 <div class="flex items-center space-x-2">
                                     <span class="text-xs">${getStatusText(item.item_status)}</span>
                                     ${item.item_status !== 'served' ? `
-                                        <button onclick="updateItemStatus(${item.id}, '${getNextStatus(item.item_status)}')"
+                                        <button onclick="updateItemStatus(${parseInt(item.id)}, '${escapeHtml(getNextStatus(item.item_status))}')"
                                                 class="px-2 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-xs">
                                             ${getButtonText(item.item_status)}
                                         </button>
@@ -211,19 +224,19 @@ async function loadOrders() {
                     ${!itemStatuses.every(s => s === 'served') ? `
                         <div class="flex space-x-2">
                             ${itemStatuses.every(s => s === 'pending') ? `
-                                <button onclick="updateOrderStatus(${order.id}, 'cooking')"
+                                <button onclick="updateOrderStatus(${parseInt(order.id)}, 'cooking')"
                                         class="flex-1 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-sm">
                                     <i class="fas fa-fire mr-1"></i>Masak Semua
                                 </button>
                             ` : ''}
                             ${itemStatuses.some(s => s === 'cooking') && !itemStatuses.some(s => s === 'pending') ? `
-                                <button onclick="updateOrderStatus(${order.id}, 'ready')"
+                                <button onclick="updateOrderStatus(${parseInt(order.id)}, 'ready')"
                                         class="flex-1 py-2 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm">
                                     <i class="fas fa-check mr-1"></i>Semua Siap
                                 </button>
                             ` : ''}
                             ${itemStatuses.every(s => s === 'ready') ? `
-                                <button onclick="updateOrderStatus(${order.id}, 'served')"
+                                <button onclick="updateOrderStatus(${parseInt(order.id)}, 'served')"
                                         class="flex-1 py-2 rounded-xl bg-gray-500 hover:bg-gray-600 text-white text-sm">
                                     <i class="fas fa-hand-holding mr-1"></i>Semua Disajikan
                                 </button>

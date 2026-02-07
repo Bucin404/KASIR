@@ -13,14 +13,36 @@ import base64
 
 from flask import Flask, render_template, jsonify, request, redirect, url_for, flash, send_file, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_wtf.csrf import CSRFProtect, CSRFError
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 
 from config import config
-from models import db, User, Role, Permission, Category, MenuItem, Table, Order, OrderItem, Payment, Income, Setting, Cart, CartItem, Discount
+from models import db, User, Role, Permission, Category, MenuItem, Table, Order, OrderItem, Payment, Income, Setting, Cart, CartItem, Discount, PendingPrint
+
+# Import USB printer module
+try:
+    from usb_printer import usb_printer, USBPrinterManager
+    USB_PRINTING_AVAILABLE = USBPrinterManager.is_available()
+except ImportError:
+    usb_printer = None
+    USB_PRINTING_AVAILABLE = False
 
 # Initialize Flask app
 app = Flask(__name__)
 app.config.from_object(config['development'])
+
+# Initialize CSRF Protection
+csrf = CSRFProtect(app)
+
+# Initialize Rate Limiter for brute force protection
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+)
 
 # Initialize extensions
 db.init_app(app)
@@ -90,15 +112,43 @@ def role_required(*roles):
         return decorated_function
     return decorator
 
-# Prevent caching for dynamic pages
+# Prevent caching for dynamic pages and add security headers
 @app.after_request
 def add_header(response):
-    """Add headers to prevent caching for HTML pages"""
+    """Add headers to prevent caching for HTML pages and security headers"""
     if 'text/html' in response.content_type:
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, private'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
+    
+    # Security headers
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    
     return response
+
+# CSRF Error handler
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': False, 'error': 'CSRF token missing or invalid'}), 400
+    flash('Sesi telah berakhir. Silakan coba lagi.', 'danger')
+    return redirect(request.referrer or url_for('dashboard'))
+
+# Rate limit error handler
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    """Custom handler for rate limit exceeded"""
+    if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'success': False, 
+            'error': 'Terlalu banyak permintaan. Silakan tunggu sebentar.'
+        }), 429
+    
+    flash('Terlalu banyak permintaan. Silakan tunggu 1 menit dan coba lagi.', 'warning')
+    return redirect(request.referrer or url_for('login'))
 
 # Initialize database and seed data
 def run_migrations():
@@ -138,6 +188,11 @@ def run_migrations():
                 conn.execute(text("ALTER TABLE users ADD COLUMN printer_id VARCHAR(100)"))
                 conn.commit()
             print("Added printer_id column to users table")
+        if 'force_password_change' not in columns:
+            with db.engine.connect() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN force_password_change BOOLEAN DEFAULT 0"))
+                conn.commit()
+            print("Added force_password_change column to users table")
     
     # Check if cart table exists (new feature)
     if 'cart' not in inspector.get_table_names():
@@ -221,7 +276,8 @@ def init_db():
             admin = User(
                 username='admin',
                 email='admin@kasir.com',
-                full_name='Administrator'
+                full_name='Administrator',
+                force_password_change=True  # Force password change on first login
             )
             admin.set_password('admin123')
             admin.roles.append(admin_role)
@@ -233,7 +289,8 @@ def init_db():
             kasir = User(
                 username='kasir',
                 email='kasir@kasir.com',
-                full_name='Kasir Utama'
+                full_name='Kasir Utama',
+                force_password_change=True  # Force password change on first login
             )
             kasir.set_password('kasir123')
             kasir.roles.append(kasir_role)
@@ -245,7 +302,8 @@ def init_db():
             koki = User(
                 username='koki',
                 email='koki@kasir.com',
-                full_name='Koki Dapur'
+                full_name='Koki Dapur',
+                force_password_change=True  # Force password change on first login
             )
             koki.set_password('koki123')
             koki.roles.append(koki_role)
@@ -420,8 +478,12 @@ def index():
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute", methods=["POST"])  # Only limit POST (actual login attempts)
 def login():
     if current_user.is_authenticated:
+        # Check if force password change is required
+        if hasattr(current_user, 'force_password_change') and current_user.force_password_change:
+            return redirect(url_for('change_password'))
         return redirect(url_for('dashboard'))
     
     if request.method == 'POST':
@@ -439,6 +501,11 @@ def login():
             login_user(user, remember=remember)
             user.last_login = utc_now()
             db.session.commit()
+            
+            # Check if force password change is required
+            if hasattr(user, 'force_password_change') and user.force_password_change:
+                flash('Silakan ganti password default Anda untuk keamanan.', 'warning')
+                return redirect(url_for('change_password'))
             
             next_page = request.args.get('next')
             flash(f'Selamat datang, {user.full_name or user.username}!', 'success')
@@ -507,6 +574,53 @@ def logout():
     logout_user()
     flash('Anda telah logout.', 'info')
     return redirect(url_for('login'))
+
+
+@app.route('/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    """Force password change page for first-time login or security requirements"""
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        # Validate current password
+        if not current_user.check_password(current_password):
+            flash('Password saat ini salah!', 'danger')
+            return render_template('auth/change_password.html')
+        
+        # Validate new password
+        if len(new_password) < 8:
+            flash('Password baru minimal 8 karakter!', 'danger')
+            return render_template('auth/change_password.html')
+        
+        if new_password != confirm_password:
+            flash('Password baru tidak cocok!', 'danger')
+            return render_template('auth/change_password.html')
+        
+        # Check password strength (at least 1 uppercase, 1 lowercase, 1 number)
+        import re
+        if not re.search(r'[A-Z]', new_password):
+            flash('Password harus mengandung minimal 1 huruf besar!', 'danger')
+            return render_template('auth/change_password.html')
+        if not re.search(r'[a-z]', new_password):
+            flash('Password harus mengandung minimal 1 huruf kecil!', 'danger')
+            return render_template('auth/change_password.html')
+        if not re.search(r'[0-9]', new_password):
+            flash('Password harus mengandung minimal 1 angka!', 'danger')
+            return render_template('auth/change_password.html')
+        
+        # Update password
+        current_user.set_password(new_password)
+        current_user.force_password_change = False
+        db.session.commit()
+        
+        flash('Password berhasil diubah!', 'success')
+        return redirect(url_for('dashboard'))
+    
+    return render_template('auth/change_password.html')
+
 
 # Dashboard
 @app.route('/dashboard')
@@ -784,6 +898,7 @@ def api_update_cart_settings():
 # ============================================
 
 @app.route('/api/order', methods=['POST'])
+@limiter.limit("60 per minute")  # Protect order creation from abuse
 def api_create_order():
     try:
         data = request.json
@@ -1049,12 +1164,31 @@ def api_create_midtrans_payment():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@csrf.exempt
 @app.route('/api/payment/midtrans/callback', methods=['POST'])
+@limiter.limit("30 per minute")  # Rate limit webhook calls
 def api_midtrans_callback():
+    """Handle Midtrans payment notification webhook - CSRF exempt for external service"""
     try:
         data = request.json
         order_id = data.get('order_id')
         transaction_status = data.get('transaction_status')
+        
+        # Verify signature for security (Midtrans sends signature_key)
+        signature_key = data.get('signature_key')
+        server_key = app.config.get('MIDTRANS_SERVER_KEY', '')
+        
+        if signature_key and server_key:
+            import hashlib
+            # Midtrans signature: SHA512(order_id+status_code+gross_amount+server_key)
+            status_code = data.get('status_code', '')
+            gross_amount = data.get('gross_amount', '')
+            expected_signature = hashlib.sha512(
+                f"{order_id}{status_code}{gross_amount}{server_key}".encode()
+            ).hexdigest()
+            
+            if signature_key != expected_signature:
+                return jsonify({'error': 'Invalid signature'}), 403
         
         # Find payment by midtrans_order_id
         payment = Payment.query.filter_by(midtrans_order_id=order_id).first()
@@ -1136,7 +1270,7 @@ def update_profile():
 
 @app.route('/profile/change-password', methods=['POST'])
 @login_required
-def change_password():
+def profile_change_password():
     current_password = request.form.get('current_password')
     new_password = request.form.get('new_password')
     confirm_password = request.form.get('confirm_password')
@@ -1255,8 +1389,16 @@ def admin_create_menu():
 @login_required
 @role_required('admin', 'manager')
 def admin_printer():
-    """Printer management page"""
-    return render_template('admin/printer.html')
+    """Redirect to Printer Station - the dedicated printer page"""
+    return redirect(url_for('printer_station'))
+
+
+@app.route('/printer-station')
+@login_required
+def printer_station():
+    """Dedicated printer station page - keep this open for reliable printing"""
+    return render_template('printer_station.html')
+
 
 @app.route('/admin/tables')
 @login_required
@@ -1686,6 +1828,288 @@ def save_printer_status():
         'printer_name': printer_name,
         'printer_id': printer_id
     })
+
+
+# ============================================
+# SERVER-SIDE PRINT QUEUE API
+# ============================================
+
+@app.route('/api/pending-prints')
+@login_required
+def get_pending_prints():
+    """Get all pending prints from server-side queue"""
+    pending = PendingPrint.query.filter_by(status='pending').order_by(PendingPrint.created_at).all()
+    return jsonify({
+        'success': True,
+        'pending_prints': [p.to_dict() for p in pending],
+        'count': len(pending)
+    })
+
+
+@app.route('/api/pending-prints', methods=['POST'])
+@login_required
+def add_pending_print():
+    """Add a new pending print to server-side queue"""
+    data = request.get_json()
+    
+    pending = PendingPrint(
+        order_id=data.get('order_id'),
+        receipt_data=json.dumps(data.get('receipt_data', [])),
+        copies=data.get('copies', 3),
+        current_copy=data.get('current_copy', 1),
+        status='pending'
+    )
+    
+    db.session.add(pending)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'pending_print': pending.to_dict()
+    })
+
+
+@app.route('/api/pending-prints/<int:print_id>/complete', methods=['POST'])
+@login_required
+def complete_pending_print(print_id):
+    """Mark a pending print as completed"""
+    pending = PendingPrint.query.get_or_404(print_id)
+    pending.status = 'completed'
+    pending.printed_at = utc_now()
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'Print marked as completed'
+    })
+
+
+@app.route('/api/pending-prints/<int:print_id>/fail', methods=['POST'])
+@login_required
+def fail_pending_print(print_id):
+    """Mark a pending print as failed and increment retry count"""
+    data = request.get_json() or {}
+    pending = PendingPrint.query.get_or_404(print_id)
+    
+    pending.retry_count += 1
+    pending.error_message = data.get('error_message', 'Unknown error')
+    
+    # Mark as permanently failed after 5 retries
+    if pending.retry_count >= 5:
+        pending.status = 'failed'
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'retry_count': pending.retry_count,
+        'status': pending.status
+    })
+
+
+@app.route('/api/pending-prints/<int:print_id>', methods=['DELETE'])
+@login_required
+def delete_pending_print(print_id):
+    """Delete a pending print from queue"""
+    pending = PendingPrint.query.get_or_404(print_id)
+    db.session.delete(pending)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'Print deleted from queue'
+    })
+
+
+@app.route('/api/pending-prints/clear', methods=['POST'])
+@login_required
+def clear_pending_prints():
+    """Clear all pending prints"""
+    PendingPrint.query.filter_by(status='pending').delete()
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'All pending prints cleared'
+    })
+
+
+# ============================================
+# USB PRINTER API (Server-Side Printing)
+# ============================================
+
+@app.route('/api/usb-printer/status')
+@login_required
+def usb_printer_status():
+    """Get USB printer status and availability"""
+    if not USB_PRINTING_AVAILABLE:
+        return jsonify({
+            'success': True,
+            'available': False,
+            'connected': False,
+            'message': 'USB printing not available (install python-escpos and pyusb)'
+        })
+    
+    return jsonify({
+        'success': True,
+        'available': True,
+        'connected': usb_printer.connected if usb_printer else False,
+        'printer_info': usb_printer.printer_info if usb_printer else None
+    })
+
+
+@app.route('/api/usb-printer/devices')
+@login_required
+def list_usb_printers():
+    """List available USB printers"""
+    if not USB_PRINTING_AVAILABLE:
+        return jsonify({
+            'success': False,
+            'message': 'USB printing not available',
+            'devices': []
+        })
+    
+    devices = USBPrinterManager.list_usb_devices()
+    return jsonify({
+        'success': True,
+        'devices': devices
+    })
+
+
+@app.route('/api/usb-printer/connect', methods=['POST'])
+@login_required
+def connect_usb_printer():
+    """Connect to USB printer"""
+    if not USB_PRINTING_AVAILABLE:
+        return jsonify({
+            'success': False,
+            'message': 'USB printing not available'
+        })
+    
+    data = request.get_json() or {}
+    vendor_id = data.get('vendor_id')
+    product_id = data.get('product_id')
+    
+    success, message = usb_printer.connect(vendor_id, product_id)
+    
+    return jsonify({
+        'success': success,
+        'message': message,
+        'connected': usb_printer.connected
+    })
+
+
+@app.route('/api/usb-printer/disconnect', methods=['POST'])
+@login_required
+def disconnect_usb_printer():
+    """Disconnect USB printer"""
+    if usb_printer:
+        usb_printer.disconnect()
+    
+    return jsonify({
+        'success': True,
+        'message': 'Disconnected'
+    })
+
+
+@app.route('/api/usb-printer/test', methods=['POST'])
+@login_required
+def test_usb_print():
+    """Test print on USB printer"""
+    if not USB_PRINTING_AVAILABLE or not usb_printer:
+        return jsonify({
+            'success': False,
+            'message': 'USB printer not available'
+        })
+    
+    success, message = usb_printer.test_print()
+    return jsonify({
+        'success': success,
+        'message': message
+    })
+
+
+@app.route('/api/usb-printer/print', methods=['POST'])
+@login_required
+def usb_print_receipt():
+    """Print receipt on USB printer"""
+    if not USB_PRINTING_AVAILABLE or not usb_printer:
+        return jsonify({
+            'success': False,
+            'message': 'USB printer not available'
+        })
+    
+    data = request.get_json()
+    
+    if 'order_data' in data:
+        success, message = usb_printer.print_receipt(data['order_data'])
+    elif 'raw_commands' in data:
+        success, message = usb_printer.print_raw(data['raw_commands'])
+    else:
+        return jsonify({
+            'success': False,
+            'message': 'No print data provided'
+        })
+    
+    return jsonify({
+        'success': success,
+        'message': message
+    })
+
+
+@app.route('/api/usb-printer/print-pending', methods=['POST'])
+@login_required
+def usb_print_pending():
+    """Print all pending receipts using USB printer"""
+    if not USB_PRINTING_AVAILABLE or not usb_printer or not usb_printer.connected:
+        return jsonify({
+            'success': False,
+            'message': 'USB printer not connected'
+        })
+    
+    pending = PendingPrint.query.filter_by(status='pending').order_by(PendingPrint.created_at).all()
+    
+    if not pending:
+        return jsonify({
+            'success': True,
+            'message': 'No pending prints',
+            'printed': 0
+        })
+    
+    printed_count = 0
+    failed_count = 0
+    
+    for item in pending:
+        try:
+            commands = json.loads(item.receipt_data)
+            success, _ = usb_printer.print_raw(commands)
+            
+            if success:
+                item.status = 'completed'
+                item.printed_at = utc_now()
+                printed_count += 1
+            else:
+                item.retry_count += 1
+                if item.retry_count >= 5:
+                    item.status = 'failed'
+                failed_count += 1
+                
+        except Exception as e:
+            item.retry_count += 1
+            item.error_message = str(e)
+            if item.retry_count >= 5:
+                item.status = 'failed'
+            failed_count += 1
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'printed': printed_count,
+        'failed': failed_count,
+        'message': f'{printed_count} receipts printed, {failed_count} failed'
+    })
+
 
 # Reports
 @app.route('/reports')
