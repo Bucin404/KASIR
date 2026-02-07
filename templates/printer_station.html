@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>🖨️ Printer Station - Dapoer Teras Obor</title>
     
     <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
@@ -209,6 +210,21 @@
         const MAX_RECONNECT_ATTEMPTS = 100; // Much higher for persistence
         const RECONNECT_INTERVAL = 2000; // 2 seconds - faster polling
         const CONTINUOUS_CHECK_INTERVAL = 5000; // 5 seconds for continuous check
+        
+        // CSRF Token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        
+        // Override fetch to include CSRF token
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options = {}) {
+            if (url.toString().startsWith('/') || url.toString().startsWith(window.location.origin)) {
+                options.headers = options.headers || {};
+                if (!(options.headers instanceof Headers)) {
+                    options.headers['X-CSRFToken'] = csrfToken;
+                }
+            }
+            return originalFetch(url, options);
+        };
         
         // Saved printer info (from localStorage)
         const SAVED_PRINTER_KEY = 'printer_station_saved_device';

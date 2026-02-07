@@ -6,8 +6,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class Config:
-    # Basic Flask config
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'kasir-super-secret-key-2024-dev'
+    # Basic Flask config - REQUIRE SECRET_KEY in production
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        import secrets
+        SECRET_KEY = secrets.token_hex(32)
+        print("WARNING: No SECRET_KEY set. Generated temporary key. Set SECRET_KEY environment variable for production!")
     
     # MySQL Database config - fallback to SQLite if MySQL not available
     MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')

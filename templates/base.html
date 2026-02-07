@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}Dapoer Teras Obor{% endblock %}</title>
     
     <!-- Favicon -->
@@ -207,6 +208,22 @@
     <script src="{{ url_for('static', filename='js/printer.js') }}"></script>
     
     <script>
+        // CSRF Token for AJAX requests
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        
+        // Override fetch to include CSRF token
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options = {}) {
+            // Only add CSRF token for same-origin requests
+            if (url.toString().startsWith('/') || url.toString().startsWith(window.location.origin)) {
+                options.headers = options.headers || {};
+                if (!(options.headers instanceof Headers)) {
+                    options.headers['X-CSRFToken'] = csrfToken;
+                }
+            }
+            return originalFetch(url, options);
+        };
+        
         // Auto dismiss toasts
         setTimeout(() => {
             document.querySelectorAll('.toast').forEach(toast => {

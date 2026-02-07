@@ -13,6 +13,7 @@ import base64
 
 from flask import Flask, render_template, jsonify, request, redirect, url_for, flash, send_file, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_wtf.csrf import CSRFProtect, CSRFError
 from werkzeug.utils import secure_filename
 
 from config import config
@@ -29,6 +30,9 @@ except ImportError:
 # Initialize Flask app
 app = Flask(__name__)
 app.config.from_object(config['development'])
+
+# Initialize CSRF Protection
+csrf = CSRFProtect(app)
 
 # Initialize extensions
 db.init_app(app)
@@ -98,15 +102,30 @@ def role_required(*roles):
         return decorated_function
     return decorator
 
-# Prevent caching for dynamic pages
+# Prevent caching for dynamic pages and add security headers
 @app.after_request
 def add_header(response):
-    """Add headers to prevent caching for HTML pages"""
+    """Add headers to prevent caching for HTML pages and security headers"""
     if 'text/html' in response.content_type:
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, private'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
+    
+    # Security headers
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    
     return response
+
+# CSRF Error handler
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': False, 'error': 'CSRF token missing or invalid'}), 400
+    flash('Sesi telah berakhir. Silakan coba lagi.', 'danger')
+    return redirect(request.referrer or url_for('dashboard'))
 
 # Initialize database and seed data
 def run_migrations():
@@ -1057,12 +1076,30 @@ def api_create_midtrans_payment():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@csrf.exempt
 @app.route('/api/payment/midtrans/callback', methods=['POST'])
 def api_midtrans_callback():
+    """Handle Midtrans payment notification webhook - CSRF exempt for external service"""
     try:
         data = request.json
         order_id = data.get('order_id')
         transaction_status = data.get('transaction_status')
+        
+        # Verify signature for security (Midtrans sends signature_key)
+        signature_key = data.get('signature_key')
+        server_key = app.config.get('MIDTRANS_SERVER_KEY', '')
+        
+        if signature_key and server_key:
+            import hashlib
+            # Midtrans signature: SHA512(order_id+status_code+gross_amount+server_key)
+            status_code = data.get('status_code', '')
+            gross_amount = data.get('gross_amount', '')
+            expected_signature = hashlib.sha512(
+                f"{order_id}{status_code}{gross_amount}{server_key}".encode()
+            ).hexdigest()
+            
+            if signature_key != expected_signature:
+                return jsonify({'error': 'Invalid signature'}), 403
         
         # Find payment by midtrans_order_id
         payment = Payment.query.filter_by(midtrans_order_id=order_id).first()
