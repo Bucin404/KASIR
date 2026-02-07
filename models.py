@@ -62,6 +62,7 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(20))
     avatar = db.Column(db.String(255))
     is_active = db.Column(db.Boolean, default=True)
+    force_password_change = db.Column(db.Boolean, default=False)  # Force password change on first login
     printer_name = db.Column(db.String(100))  # Store last connected printer name
     printer_id = db.Column(db.String(100))  # Store Bluetooth device ID for auto-reconnect
     created_at = db.Column(db.DateTime, default=utc_now)

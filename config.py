@@ -32,10 +32,16 @@ class Config:
         'pool_pre_ping': True,
     }
     
-    # Session config
+    # Session config - Enhanced security
     PERMANENT_SESSION_LIFETIME = timedelta(hours=24)
-    SESSION_COOKIE_SECURE = False
+    SESSION_COOKIE_SECURE = os.environ.get('FLASK_ENV') == 'production'  # True in production (requires HTTPS)
     SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'  # Prevent CSRF via cross-site requests
+    
+    # Rate limiting config
+    RATELIMIT_STORAGE_URI = "memory://"
+    RATELIMIT_DEFAULT = "200 per day;50 per hour"
+    RATELIMIT_HEADERS_ENABLED = True
     
     # File upload config
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
@@ -55,10 +61,13 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
+    SESSION_COOKIE_SECURE = False  # Allow non-HTTPS in development
     
 class ProductionConfig(Config):
     DEBUG = False
-    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True  # Require HTTPS in production
+    # More restrictive rate limits for production
+    RATELIMIT_DEFAULT = "100 per day;30 per hour"
 
 config = {
     'development': DevelopmentConfig,

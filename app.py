@@ -14,6 +14,8 @@ import base64
 from flask import Flask, render_template, jsonify, request, redirect, url_for, flash, send_file, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect, CSRFError
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 
 from config import config
@@ -33,6 +35,14 @@ app.config.from_object(config['development'])
 
 # Initialize CSRF Protection
 csrf = CSRFProtect(app)
+
+# Initialize Rate Limiter for brute force protection
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+)
 
 # Initialize extensions
 db.init_app(app)
@@ -165,6 +175,11 @@ def run_migrations():
                 conn.execute(text("ALTER TABLE users ADD COLUMN printer_id VARCHAR(100)"))
                 conn.commit()
             print("Added printer_id column to users table")
+        if 'force_password_change' not in columns:
+            with db.engine.connect() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN force_password_change BOOLEAN DEFAULT 0"))
+                conn.commit()
+            print("Added force_password_change column to users table")
     
     # Check if cart table exists (new feature)
     if 'cart' not in inspector.get_table_names():
@@ -248,7 +263,8 @@ def init_db():
             admin = User(
                 username='admin',
                 email='admin@kasir.com',
-                full_name='Administrator'
+                full_name='Administrator',
+                force_password_change=True  # Force password change on first login
             )
             admin.set_password('admin123')
             admin.roles.append(admin_role)
@@ -260,7 +276,8 @@ def init_db():
             kasir = User(
                 username='kasir',
                 email='kasir@kasir.com',
-                full_name='Kasir Utama'
+                full_name='Kasir Utama',
+                force_password_change=True  # Force password change on first login
             )
             kasir.set_password('kasir123')
             kasir.roles.append(kasir_role)
@@ -272,7 +289,8 @@ def init_db():
             koki = User(
                 username='koki',
                 email='koki@kasir.com',
-                full_name='Koki Dapur'
+                full_name='Koki Dapur',
+                force_password_change=True  # Force password change on first login
             )
             koki.set_password('koki123')
             koki.roles.append(koki_role)
@@ -447,8 +465,12 @@ def index():
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")  # Brute force protection
 def login():
     if current_user.is_authenticated:
+        # Check if force password change is required
+        if hasattr(current_user, 'force_password_change') and current_user.force_password_change:
+            return redirect(url_for('change_password'))
         return redirect(url_for('dashboard'))
     
     if request.method == 'POST':
@@ -466,6 +488,11 @@ def login():
             login_user(user, remember=remember)
             user.last_login = utc_now()
             db.session.commit()
+            
+            # Check if force password change is required
+            if hasattr(user, 'force_password_change') and user.force_password_change:
+                flash('Silakan ganti password default Anda untuk keamanan.', 'warning')
+                return redirect(url_for('change_password'))
             
             next_page = request.args.get('next')
             flash(f'Selamat datang, {user.full_name or user.username}!', 'success')
@@ -534,6 +561,53 @@ def logout():
     logout_user()
     flash('Anda telah logout.', 'info')
     return redirect(url_for('login'))
+
+
+@app.route('/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    """Force password change page for first-time login or security requirements"""
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        # Validate current password
+        if not current_user.check_password(current_password):
+            flash('Password saat ini salah!', 'danger')
+            return render_template('auth/change_password.html')
+        
+        # Validate new password
+        if len(new_password) < 8:
+            flash('Password baru minimal 8 karakter!', 'danger')
+            return render_template('auth/change_password.html')
+        
+        if new_password != confirm_password:
+            flash('Password baru tidak cocok!', 'danger')
+            return render_template('auth/change_password.html')
+        
+        # Check password strength (at least 1 uppercase, 1 lowercase, 1 number)
+        import re
+        if not re.search(r'[A-Z]', new_password):
+            flash('Password harus mengandung minimal 1 huruf besar!', 'danger')
+            return render_template('auth/change_password.html')
+        if not re.search(r'[a-z]', new_password):
+            flash('Password harus mengandung minimal 1 huruf kecil!', 'danger')
+            return render_template('auth/change_password.html')
+        if not re.search(r'[0-9]', new_password):
+            flash('Password harus mengandung minimal 1 angka!', 'danger')
+            return render_template('auth/change_password.html')
+        
+        # Update password
+        current_user.set_password(new_password)
+        current_user.force_password_change = False
+        db.session.commit()
+        
+        flash('Password berhasil diubah!', 'success')
+        return redirect(url_for('dashboard'))
+    
+    return render_template('auth/change_password.html')
+
 
 # Dashboard
 @app.route('/dashboard')
@@ -811,6 +885,7 @@ def api_update_cart_settings():
 # ============================================
 
 @app.route('/api/order', methods=['POST'])
+@limiter.limit("60 per minute")  # Protect order creation from abuse
 def api_create_order():
     try:
         data = request.json
@@ -1078,6 +1153,7 @@ def api_create_midtrans_payment():
 
 @csrf.exempt
 @app.route('/api/payment/midtrans/callback', methods=['POST'])
+@limiter.limit("30 per minute")  # Rate limit webhook calls
 def api_midtrans_callback():
     """Handle Midtrans payment notification webhook - CSRF exempt for external service"""
     try:
