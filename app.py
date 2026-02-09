@@ -987,10 +987,11 @@ def api_create_order():
         db.session.commit()
         
         # Create notification for new order
+        total_formatted = f"{order.total:,}".replace(',', '.')
         create_notification(
             type='order_new',
             title='Pesanan Baru!',
-            message=f'Order #{order.order_number} - {customer_name or "Guest"} - Rp {order.total:,}'.replace(',', '.'),
+            message=f'Order #{order.order_number} - {customer_name or "Guest"} - Rp {total_formatted}',
             data={'order_id': order.id, 'order_number': order.order_number}
         )
         
@@ -1215,10 +1216,11 @@ def api_midtrans_callback():
                 payment.order.status = 'processing'
                 
                 # Create success notification
+                amount_formatted = f"{payment.amount:,}".replace(',', '.')
                 create_notification(
                     type='payment_success',
                     title='Pembayaran Berhasil!',
-                    message=f'Order #{payment.order.order_number} - Rp {payment.amount:,}'.replace(',', '.'),
+                    message=f'Order #{payment.order.order_number} - Rp {amount_formatted}',
                     data={'order_id': payment.order_id, 'payment_id': payment.id}
                 )
                 

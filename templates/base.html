@@ -299,7 +299,7 @@
                     
                     // Play sound if new notifications
                     if (data.unread_count > lastNotificationCount) {
-                        notificationSound.play().catch(() => {});
+                        notificationSound.play().catch(e => console.debug('Notification sound could not play:', e));
                     }
                 } else {
                     badge.classList.add('hidden');
