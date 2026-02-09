@@ -490,6 +490,40 @@ class Discount(db.Model):
         return f'<Discount {self.code}>'
 
 
+class Notification(db.Model):
+    """Notification model for real-time alerts"""
+    __tablename__ = 'notifications'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # null = broadcast to all
+    type = db.Column(db.String(50), nullable=False)  # order_new, payment_success, payment_failed, order_ready
+    title = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text)
+    data = db.Column(db.Text)  # JSON data for additional info
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=utc_now)
+    read_at = db.Column(db.DateTime, nullable=True)
+    
+    # Relationship
+    user = db.relationship('User', backref=db.backref('notifications', lazy='dynamic'))
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'type': self.type,
+            'title': self.title,
+            'message': self.message,
+            'data': self.data,
+            'is_read': self.is_read,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'read_at': self.read_at.isoformat() if self.read_at else None
+        }
+    
+    def __repr__(self):
+        return f'<Notification {self.id} - {self.type}>'
+
+
 class PendingPrint(db.Model):
     """Server-side pending print queue for reliable printing across page navigations"""
     __tablename__ = 'pending_prints'

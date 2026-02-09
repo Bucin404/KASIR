@@ -77,6 +77,11 @@
                     <span>Printer Station</span>
                     <i class="fas fa-external-link-alt text-xs ml-auto"></i>
                 </a>
+                
+                <a href="{{ url_for('admin_payment_gateway') }}" class="sidebar-link {% if active_page == 'admin_payment_gateway' %}active{% endif %} flex items-center space-x-3 px-4 py-3 rounded-xl {% if active_page == 'admin_payment_gateway' %}text-white{% else %}text-gray-400 hover:text-white{% endif %}">
+                    <i class="fas fa-credit-card w-5"></i>
+                    <span>Payment Gateway</span>
+                </a>
             </div>
             {% endif %}
             

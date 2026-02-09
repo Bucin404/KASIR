@@ -19,7 +19,7 @@ from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 
 from config import config
-from models import db, User, Role, Permission, Category, MenuItem, Table, Order, OrderItem, Payment, Income, Setting, Cart, CartItem, Discount, PendingPrint
+from models import db, User, Role, Permission, Category, MenuItem, Table, Order, OrderItem, Payment, Income, Setting, Cart, CartItem, Discount, PendingPrint, Notification
 
 # Import USB printer module
 try:
@@ -986,6 +986,14 @@ def api_create_order():
         db.session.add(payment)
         db.session.commit()
         
+        # Create notification for new order
+        create_notification(
+            type='order_new',
+            title='Pesanan Baru!',
+            message=f'Order #{order.order_number} - {customer_name or "Guest"} - Rp {order.total:,}'.replace(',', '.'),
+            data={'order_id': order.id, 'order_number': order.order_number}
+        )
+        
         # Update table status
         if table_id:
             table = db.session.get(Table, table_id)
@@ -1205,8 +1213,25 @@ def api_midtrans_callback():
                 payment.status = 'paid'
                 payment.paid_at = utc_now()
                 payment.order.status = 'processing'
+                
+                # Create success notification
+                create_notification(
+                    type='payment_success',
+                    title='Pembayaran Berhasil!',
+                    message=f'Order #{payment.order.order_number} - Rp {payment.amount:,}'.replace(',', '.'),
+                    data={'order_id': payment.order_id, 'payment_id': payment.id}
+                )
+                
             elif transaction_status in ['deny', 'cancel', 'expire']:
                 payment.status = 'failed'
+                
+                # Create failure notification
+                create_notification(
+                    type='payment_failed',
+                    title='Pembayaran Gagal',
+                    message=f'Order #{payment.order.order_number} - Status: {transaction_status}',
+                    data={'order_id': payment.order_id, 'payment_id': payment.id}
+                )
             
             db.session.commit()
         
@@ -2546,6 +2571,143 @@ def reset_database():
         flash(f'Error saat reset database: {str(e)}', 'danger')
     
     return redirect(url_for('dashboard'))
+
+# ========== NOTIFICATION SYSTEM ==========
+@app.route('/api/notifications')
+@login_required
+def api_get_notifications():
+    """Get notifications for current user"""
+    notifications = Notification.query.filter(
+        (Notification.user_id == current_user.id) | (Notification.user_id == None)
+    ).order_by(Notification.created_at.desc()).limit(50).all()
+    
+    unread_count = Notification.query.filter(
+        ((Notification.user_id == current_user.id) | (Notification.user_id == None)),
+        Notification.is_read == False
+    ).count()
+    
+    return jsonify({
+        'notifications': [n.to_dict() for n in notifications],
+        'unread_count': unread_count
+    })
+
+
+@app.route('/api/notifications/<int:notification_id>/read', methods=['POST'])
+@login_required
+def api_mark_notification_read(notification_id):
+    """Mark a notification as read"""
+    notification = Notification.query.get_or_404(notification_id)
+    notification.is_read = True
+    notification.read_at = utc_now()
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/notifications/read-all', methods=['POST'])
+@login_required
+def api_mark_all_notifications_read():
+    """Mark all notifications as read for current user"""
+    Notification.query.filter(
+        ((Notification.user_id == current_user.id) | (Notification.user_id == None)),
+        Notification.is_read == False
+    ).update({'is_read': True, 'read_at': utc_now()}, synchronize_session=False)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+def create_notification(type, title, message, user_id=None, data=None):
+    """Helper function to create a notification"""
+    import json
+    notification = Notification(
+        type=type,
+        title=title,
+        message=message,
+        user_id=user_id,
+        data=json.dumps(data) if data else None
+    )
+    db.session.add(notification)
+    db.session.commit()
+    return notification
+
+
+# ========== PAYMENT GATEWAY ADMIN ==========
+@app.route('/admin/payment-gateway')
+@login_required
+@role_required('admin')
+def admin_payment_gateway():
+    """Payment gateway settings page"""
+    # Get current settings
+    server_key = app.config.get('MIDTRANS_SERVER_KEY', '')
+    client_key = app.config.get('MIDTRANS_CLIENT_KEY', '')
+    is_production = app.config.get('MIDTRANS_IS_PRODUCTION', False)
+    
+    # Mask keys for display
+    masked_server_key = server_key[:8] + '****' + server_key[-4:] if len(server_key) > 12 else '****'
+    masked_client_key = client_key[:8] + '****' + client_key[-4:] if len(client_key) > 12 else '****'
+    
+    return render_template('admin/payment_gateway.html',
+                         masked_server_key=masked_server_key,
+                         masked_client_key=masked_client_key,
+                         is_production=is_production,
+                         is_configured=bool(server_key and client_key),
+                         active_page='admin_payment_gateway')
+
+
+@app.route('/api/payment-gateway/test', methods=['POST'])
+@login_required
+@role_required('admin')
+def api_test_payment_gateway():
+    """Test Midtrans API connection"""
+    import base64
+    import requests
+    
+    server_key = app.config.get('MIDTRANS_SERVER_KEY', '')
+    is_production = app.config.get('MIDTRANS_IS_PRODUCTION', False)
+    
+    if not server_key:
+        return jsonify({
+            'success': False,
+            'message': 'Server Key belum dikonfigurasi'
+        })
+    
+    # Choose the correct API URL
+    if is_production:
+        api_url = 'https://api.midtrans.com/v2/ping'
+    else:
+        api_url = 'https://api.sandbox.midtrans.com/v2/ping'
+    
+    try:
+        # Create auth header
+        auth_string = base64.b64encode(f'{server_key}:'.encode()).decode()
+        headers = {
+            'Authorization': f'Basic {auth_string}',
+            'Accept': 'application/json'
+        }
+        
+        response = requests.get(api_url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            return jsonify({
+                'success': True,
+                'message': f'Koneksi berhasil! Mode: {"Production" if is_production else "Sandbox"}',
+                'environment': 'production' if is_production else 'sandbox'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': f'Koneksi gagal: HTTP {response.status_code}'
+            })
+    except requests.exceptions.Timeout:
+        return jsonify({
+            'success': False,
+            'message': 'Koneksi timeout. Coba lagi nanti.'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        })
+
 
 if __name__ == '__main__':
     os.makedirs('static/css', exist_ok=True)
