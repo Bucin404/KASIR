@@ -1358,6 +1358,37 @@ def admin_menu():
     menu_items = MenuItem.query.all()
     return render_template('admin/menu.html', categories=categories, menu_items=menu_items)
 
+def allowed_file(filename):
+    """Check if file extension is allowed"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in app.config.get('ALLOWED_EXTENSIONS', {'png', 'jpg', 'jpeg', 'gif', 'webp'})
+
+def save_uploaded_image(file):
+    """Save uploaded image and return the URL path"""
+    if file and file.filename and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        # Add timestamp to avoid duplicate names
+        import time
+        filename = f"{int(time.time())}_{filename}"
+        
+        # Ensure upload folder exists
+        upload_folder = app.config.get('UPLOAD_FOLDER', 'uploads')
+        menu_upload_folder = os.path.join(upload_folder, 'menu')
+        os.makedirs(menu_upload_folder, exist_ok=True)
+        
+        filepath = os.path.join(menu_upload_folder, filename)
+        file.save(filepath)
+        
+        # Return URL path
+        return f"/uploads/menu/{filename}"
+    return None
+
+@app.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    """Serve uploaded files"""
+    upload_folder = app.config.get('UPLOAD_FOLDER', 'uploads')
+    return send_file(os.path.join(upload_folder, filename))
+
 @app.route('/admin/menu/create', methods=['POST'])
 @login_required
 @role_required('admin', 'manager')
@@ -1370,7 +1401,19 @@ def admin_create_menu():
     is_popular = request.form.get('is_popular') == 'on'
     has_spicy_option = request.form.get('has_spicy_option') == 'on'
     has_temperature_option = request.form.get('has_temperature_option') == 'on'
-    image = request.form.get('image')
+    
+    # Handle image: URL or upload
+    image = request.form.get('image_url', '').strip()
+    if 'image_file' in request.files:
+        file = request.files['image_file']
+        if file and file.filename:
+            uploaded_path = save_uploaded_image(file)
+            if uploaded_path:
+                image = uploaded_path
+    
+    # Default image if none provided
+    if not image:
+        image = "https://via.placeholder.com/300x200?text=No+Image"
     
     menu_item = MenuItem(
         code=code,
@@ -1389,6 +1432,83 @@ def admin_create_menu():
     
     flash('Menu berhasil ditambahkan!', 'success')
     return redirect(url_for('admin_menu'))
+
+
+@app.route('/admin/menu/<int:id>/edit', methods=['POST'])
+@login_required
+@role_required('admin', 'manager')
+def admin_edit_menu(id):
+    menu_item = MenuItem.query.get_or_404(id)
+    
+    menu_item.code = request.form.get('code', menu_item.code)
+    menu_item.name = request.form.get('name', menu_item.name)
+    menu_item.price = int(request.form.get('price', menu_item.price))
+    menu_item.category_id = request.form.get('category_id', menu_item.category_id)
+    menu_item.description = request.form.get('description', menu_item.description)
+    menu_item.is_popular = request.form.get('is_popular') == 'on'
+    menu_item.is_available = request.form.get('is_available') == 'on'
+    menu_item.has_spicy_option = request.form.get('has_spicy_option') == 'on'
+    menu_item.has_temperature_option = request.form.get('has_temperature_option') == 'on'
+    
+    # Handle image: URL or upload
+    image_url = request.form.get('image_url', '').strip()
+    if image_url:
+        menu_item.image = image_url
+    
+    if 'image_file' in request.files:
+        file = request.files['image_file']
+        if file and file.filename:
+            uploaded_path = save_uploaded_image(file)
+            if uploaded_path:
+                menu_item.image = uploaded_path
+    
+    db.session.commit()
+    
+    flash('Menu berhasil diperbarui!', 'success')
+    return redirect(url_for('admin_menu'))
+
+
+@app.route('/admin/menu/<int:id>/delete', methods=['POST'])
+@login_required
+@role_required('admin', 'manager')
+def admin_delete_menu(id):
+    menu_item = MenuItem.query.get_or_404(id)
+    
+    # Check if menu item is used in any orders
+    order_items = OrderItem.query.filter_by(menu_item_id=id).first()
+    if order_items:
+        flash('Menu tidak dapat dihapus karena sudah digunakan dalam pesanan. Nonaktifkan saja jika tidak ingin ditampilkan.', 'error')
+        return redirect(url_for('admin_menu'))
+    
+    # Delete from cart items first
+    CartItem.query.filter_by(menu_item_id=id).delete()
+    
+    db.session.delete(menu_item)
+    db.session.commit()
+    
+    flash('Menu berhasil dihapus!', 'success')
+    return redirect(url_for('admin_menu'))
+
+
+@app.route('/api/menu/<int:id>')
+@login_required
+@role_required('admin', 'manager')
+def api_get_menu(id):
+    """Get menu item data for edit form"""
+    menu_item = MenuItem.query.get_or_404(id)
+    return jsonify({
+        'id': menu_item.id,
+        'code': menu_item.code,
+        'name': menu_item.name,
+        'price': menu_item.price,
+        'category_id': menu_item.category_id,
+        'description': menu_item.description or '',
+        'image': menu_item.image or '',
+        'is_popular': menu_item.is_popular,
+        'is_available': menu_item.is_available,
+        'has_spicy_option': menu_item.has_spicy_option,
+        'has_temperature_option': menu_item.has_temperature_option
+    })
 
 @app.route('/admin/printer')
 @login_required
