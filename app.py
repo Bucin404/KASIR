@@ -1493,7 +1493,7 @@ def admin_delete_menu(id):
 @app.route('/api/menu/<int:id>')
 @login_required
 @role_required('admin', 'manager')
-def api_get_menu(id):
+def api_get_menu_item(id):
     """Get menu item data for edit form"""
     menu_item = MenuItem.query.get_or_404(id)
     return jsonify({
