@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Pembayaran - Dapoer Teras Obor</title>
     
     <!-- Favicon -->
@@ -174,9 +175,151 @@
         </div>
     </div>
     
+    <!-- PrinterManager is loaded from base.html - no need to load again -->
+    
     <script>
         const snapToken = "{{ snap_token }}";
         const orderId = {{ order.id }};
+        
+        // CSRF Token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        
+        // Override fetch to include CSRF token
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options = {}) {
+            if (url.toString().startsWith('/') || url.toString().startsWith(window.location.origin)) {
+                options.headers = options.headers || {};
+                if (!(options.headers instanceof Headers)) {
+                    options.headers['X-CSRFToken'] = csrfToken;
+                }
+            }
+            return originalFetch(url, options);
+        };
+        
+        // Order data for printing
+        const orderData = {
+            id: {{ order.id }},
+            order_number: "{{ order.order_number }}",
+            customer_name: "{{ order.customer_name or '' }}",
+            table: "{{ order.table.number if order.table else '' }}",
+            subtotal: {{ order.subtotal }},
+            tax: {{ order.tax }},
+            discount: {{ order.discount }},
+            total: {{ order.total }},
+            items: [
+                {% for item in order.items %}
+                {
+                    name: "{{ item.name }}",
+                    quantity: {{ item.quantity }},
+                    price: {{ item.price }},
+                    subtotal: {{ item.subtotal }}
+                }{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ],
+            payment: {
+                payment_method: "Online",
+                paid_amount: {{ order.total }},
+                change_amount: 0
+            }
+        };
+        
+        // ESC/POS Commands for building receipt data
+        const ESC_POS = {
+            INIT: [0x1B, 0x40],
+            ALIGN_CENTER: [0x1B, 0x61, 0x01],
+            ALIGN_LEFT: [0x1B, 0x61, 0x00],
+            BOLD_ON: [0x1B, 0x45, 0x01],
+            BOLD_OFF: [0x1B, 0x45, 0x00],
+            DOUBLE_HEIGHT: [0x1B, 0x21, 0x10],
+            NORMAL_SIZE: [0x1B, 0x21, 0x00],
+            CUT_PAPER: [0x1D, 0x56, 0x00],
+            FEED_LINE: [0x0A],
+            FEED_LINES: (n) => [0x1B, 0x64, n],
+        };
+        
+        // Format number with thousand separator
+        function formatNumber(num) {
+            return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+        
+        // Build receipt commands
+        function buildReceiptCommands(order, copyNum, totalCopies) {
+            const encoder = new TextEncoder();
+            let commands = [];
+            
+            const copyLabels = ['Kasir', 'Pelanggan', 'Dapur'];
+            const copyLabel = copyLabels[copyNum - 1] || `Copy ${copyNum}`;
+            
+            commands.push(...ESC_POS.INIT);
+            commands.push(...ESC_POS.ALIGN_CENTER);
+            commands.push(...ESC_POS.BOLD_ON);
+            commands.push(...encoder.encode('================================\n'));
+            commands.push(...encoder.encode(' DAPOER TERAS OBOR\n'));
+            commands.push(...encoder.encode('================================\n'));
+            commands.push(...ESC_POS.BOLD_OFF);
+            commands.push(...encoder.encode(`[${copyLabel}] ${copyNum}/${totalCopies}\n`));
+            commands.push(...encoder.encode('\n'));
+            
+            commands.push(...ESC_POS.ALIGN_LEFT);
+            commands.push(...encoder.encode(`No: ${order.order_number}\n`));
+            commands.push(...encoder.encode(`Waktu: ${new Date().toLocaleString('id-ID')}\n`));
+            commands.push(...encoder.encode(`Pembayaran: ONLINE\n`));
+            if (order.table) {
+                commands.push(...encoder.encode(`Meja: ${order.table}\n`));
+            }
+            commands.push(...encoder.encode('--------------------------------\n'));
+            
+            if (order.items && order.items.length > 0) {
+                for (const item of order.items) {
+                    commands.push(...encoder.encode(`${item.name}\n`));
+                    commands.push(...encoder.encode(`  x${item.quantity}     Rp ${formatNumber(item.subtotal)}\n`));
+                }
+            }
+            
+            commands.push(...encoder.encode('--------------------------------\n'));
+            commands.push(...encoder.encode(`Subtotal:    Rp ${formatNumber(order.subtotal)}\n`));
+            if (order.discount > 0) {
+                commands.push(...encoder.encode(`Diskon:      Rp ${formatNumber(order.discount)}\n`));
+            }
+            commands.push(...encoder.encode(`Pajak:       Rp ${formatNumber(order.tax)}\n`));
+            commands.push(...ESC_POS.BOLD_ON);
+            commands.push(...encoder.encode(`TOTAL:       Rp ${formatNumber(order.total)}\n`));
+            commands.push(...ESC_POS.BOLD_OFF);
+            commands.push(...encoder.encode('--------------------------------\n'));
+            commands.push(...encoder.encode(`Dibayar:     Rp ${formatNumber(order.total)}\n`));
+            commands.push(...encoder.encode('\n'));
+            commands.push(...ESC_POS.ALIGN_CENTER);
+            commands.push(...encoder.encode('*** LUNAS ***\n'));
+            commands.push(...encoder.encode('\nTerima kasih!\n'));
+            commands.push(...encoder.encode('================================\n'));
+            commands.push(...ESC_POS.FEED_LINES(4));
+            commands.push(...ESC_POS.CUT_PAPER);
+            
+            return commands;
+        }
+        
+        // Save receipt to server queue for Printer Station
+        async function saveReceiptToServerQueue(order, copies = 3) {
+            try {
+                for (let i = 1; i <= copies; i++) {
+                    const commands = buildReceiptCommands(order, i, copies);
+                    
+                    await fetch('/api/pending-prints', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            order_id: order.id,
+                            receipt_data: commands,
+                            copies: copies,
+                            current_copy: i
+                        })
+                    });
+                }
+                console.log(`Receipt saved to server queue (${copies} copies)`);
+            } catch (error) {
+                console.error('Error saving receipt to queue:', error);
+            }
+        }
         
         function openPayment() {
             if (!snapToken) {
@@ -189,9 +332,15 @@
                     console.log('Payment success:', result);
                     updatePaymentStatus('paid', result);
                     showStatus('success');
+                    
+                    // Save receipt to server queue for Printer Station
+                    console.log('Saving receipt to server queue for online payment...');
+                    saveReceiptToServerQueue(orderData, 3);
+                    
+                    // Redirect after a short delay
                     setTimeout(() => {
                         window.location.href = "{{ url_for('orders') }}";
-                    }, 2000);
+                    }, 3000);
                 },
                 onPending: function(result) {
                     console.log('Payment pending:', result);

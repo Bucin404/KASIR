@@ -13,14 +13,36 @@ import base64
 
 from flask import Flask, render_template, jsonify, request, redirect, url_for, flash, send_file, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from flask_wtf.csrf import CSRFProtect, CSRFError
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from werkzeug.utils import secure_filename
 
 from config import config
-from models import db, User, Role, Permission, Category, MenuItem, Table, Order, OrderItem, Payment, Income, Setting, Cart, CartItem, Discount
+from models import db, User, Role, Permission, Category, MenuItem, Table, Order, OrderItem, Payment, Income, Setting, Cart, CartItem, Discount, PendingPrint, Notification
+
+# Import USB printer module
+try:
+    from usb_printer import usb_printer, USBPrinterManager
+    USB_PRINTING_AVAILABLE = USBPrinterManager.is_available()
+except ImportError:
+    usb_printer = None
+    USB_PRINTING_AVAILABLE = False
 
 # Initialize Flask app
 app = Flask(__name__)
 app.config.from_object(config['development'])
+
+# Initialize CSRF Protection
+csrf = CSRFProtect(app)
+
+# Initialize Rate Limiter for brute force protection
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+)
 
 # Initialize extensions
 db.init_app(app)
@@ -90,15 +112,43 @@ def role_required(*roles):
         return decorated_function
     return decorator
 
-# Prevent caching for dynamic pages
+# Prevent caching for dynamic pages and add security headers
 @app.after_request
 def add_header(response):
-    """Add headers to prevent caching for HTML pages"""
+    """Add headers to prevent caching for HTML pages and security headers"""
     if 'text/html' in response.content_type:
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, private'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
+    
+    # Security headers
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    
     return response
+
+# CSRF Error handler
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': False, 'error': 'CSRF token missing or invalid'}), 400
+    flash('Sesi telah berakhir. Silakan coba lagi.', 'danger')
+    return redirect(request.referrer or url_for('dashboard'))
+
+# Rate limit error handler
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    """Custom handler for rate limit exceeded"""
+    if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'success': False, 
+            'error': 'Terlalu banyak permintaan. Silakan tunggu sebentar.'
+        }), 429
+    
+    flash('Terlalu banyak permintaan. Silakan tunggu 1 menit dan coba lagi.', 'warning')
+    return redirect(request.referrer or url_for('login'))
 
 # Initialize database and seed data
 def run_migrations():
@@ -138,6 +188,11 @@ def run_migrations():
                 conn.execute(text("ALTER TABLE users ADD COLUMN printer_id VARCHAR(100)"))
                 conn.commit()
             print("Added printer_id column to users table")
+        if 'force_password_change' not in columns:
+            with db.engine.connect() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN force_password_change BOOLEAN DEFAULT 0"))
+                conn.commit()
+            print("Added force_password_change column to users table")
     
     # Check if cart table exists (new feature)
     if 'cart' not in inspector.get_table_names():
@@ -221,7 +276,8 @@ def init_db():
             admin = User(
                 username='admin',
                 email='admin@kasir.com',
-                full_name='Administrator'
+                full_name='Administrator',
+                force_password_change=True  # Force password change on first login
             )
             admin.set_password('admin123')
             admin.roles.append(admin_role)
@@ -233,7 +289,8 @@ def init_db():
             kasir = User(
                 username='kasir',
                 email='kasir@kasir.com',
-                full_name='Kasir Utama'
+                full_name='Kasir Utama',
+                force_password_change=True  # Force password change on first login
             )
             kasir.set_password('kasir123')
             kasir.roles.append(kasir_role)
@@ -245,7 +302,8 @@ def init_db():
             koki = User(
                 username='koki',
                 email='koki@kasir.com',
-                full_name='Koki Dapur'
+                full_name='Koki Dapur',
+                force_password_change=True  # Force password change on first login
             )
             koki.set_password('koki123')
             koki.roles.append(koki_role)
@@ -316,6 +374,8 @@ def seed_menu_items():
         {'code': '222', 'name': 'Mie Siram Ayam', 'price': 22000, 'category': mie, 'has_spicy': True, 'popular': False, 'image': 'https://images.unsplash.com/photo-1555126634-323283e090fa?w=400&h=300&fit=crop'},
         {'code': '232', 'name': 'Mie Goreng Seafood', 'price': 28000, 'category': mie, 'has_spicy': True, 'popular': True, 'image': 'https://images.unsplash.com/photo-1617093727343-374698b1b08d?w=400&h=300&fit=crop'},
         {'code': '242', 'name': 'Mie Siram Seafood', 'price': 28000, 'category': mie, 'has_spicy': True, 'popular': False, 'image': 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&h=300&fit=crop'},
+        {'code': '252', 'name': 'Mie Goreng Sapi', 'price': 30000, 'category': mie, 'has_spicy': True, 'popular': True, 'image': 'https://images.unsplash.com/photo-1612874742237-6526221588e3?w=400&h=300&fit=crop'},
+        {'code': '262', 'name': 'Mie Siram Sapi', 'price': 30000, 'category': mie, 'has_spicy': True, 'popular': False, 'image': 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&h=300&fit=crop'},
         
         # Kwetiau
         {'code': '414', 'name': 'Kwetiau Ayam Goreng', 'price': 25000, 'category': kwetiau, 'has_spicy': True, 'popular': True, 'image': 'https://images.unsplash.com/photo-1585032226651-759b368d7246?w=400&h=300&fit=crop'},
@@ -331,6 +391,7 @@ def seed_menu_items():
         {'code': '535', 'name': 'Sapo Tahu Ayam', 'price': 27000, 'category': menu_lain, 'has_spicy': True, 'popular': True, 'image': 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'},
         {'code': '545', 'name': 'Sapo Tahu Seafood', 'price': 30000, 'category': menu_lain, 'has_spicy': True, 'popular': True, 'image': 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&h=300&fit=crop'},
         {'code': '555', 'name': 'Nasi Putih', 'price': 5000, 'category': menu_lain, 'has_spicy': False, 'popular': False, 'image': 'https://images.unsplash.com/photo-1516684732162-798a0062be99?w=400&h=300&fit=crop'},
+        {'code': '565', 'name': 'Telur Mata Sapi / Dadar', 'price': 5000, 'category': menu_lain, 'has_spicy': False, 'popular': False, 'image': 'https://images.unsplash.com/photo-1510693206972-df098062cb71?w=400&h=300&fit=crop'},
         
         # Snack
         {'code': '313', 'name': 'Fish Cake', 'price': 12000, 'category': snack, 'has_spicy': False, 'popular': False, 'image': 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=400&h=300&fit=crop'},
@@ -359,10 +420,12 @@ def seed_menu_items():
         {'code': '767', 'name': 'Thai Tea', 'price': 15000, 'category': minuman, 'has_spicy': False, 'popular': True, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1558857563-b371033873b8?w=400&h=300&fit=crop'},
         {'code': '777', 'name': 'Green Tea Milk', 'price': 15000, 'category': minuman, 'has_spicy': False, 'popular': True, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1515823064-d6e0c04616a7?w=400&h=300&fit=crop'},
         {'code': '787', 'name': 'Milo', 'price': 15000, 'category': minuman, 'has_spicy': False, 'popular': True, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1517578239113-b03992dcdd25?w=400&h=300&fit=crop'},
-        {'code': '797', 'name': 'Lemon Tea', 'price': 12000, 'category': minuman, 'has_spicy': False, 'popular': False, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&h=300&fit=crop'},
-        {'code': '807', 'name': 'Cappucino', 'price': 18000, 'category': minuman, 'has_spicy': False, 'popular': True, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=300&fit=crop'},
-        {'code': '817', 'name': 'Lemonade', 'price': 15000, 'category': minuman, 'has_spicy': False, 'popular': False, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=400&h=300&fit=crop'},
-        {'code': '827', 'name': 'Blackcurrant', 'price': 15000, 'category': minuman, 'has_spicy': False, 'popular': False, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=400&h=300&fit=crop'},
+        {'code': '797', 'name': 'Thai Tea Milo', 'price': 15000, 'category': minuman, 'has_spicy': False, 'popular': True, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1558857563-b371033873b8?w=400&h=300&fit=crop'},
+        {'code': '708', 'name': 'Cappucino', 'price': 15000, 'category': minuman, 'has_spicy': False, 'popular': True, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=400&h=300&fit=crop'},
+        {'code': '718', 'name': 'Teh Tarik', 'price': 15000, 'category': minuman, 'has_spicy': False, 'popular': True, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1571934811356-5cc061b6821f?w=400&h=300&fit=crop'},
+        {'code': '728', 'name': 'Lemon Tea', 'price': 15000, 'category': minuman, 'has_spicy': False, 'popular': False, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&h=300&fit=crop'},
+        {'code': '738', 'name': 'Lemonade', 'price': 15000, 'category': minuman, 'has_spicy': False, 'popular': False, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=400&h=300&fit=crop'},
+        {'code': '748', 'name': 'Blackcurrant', 'price': 15000, 'category': minuman, 'has_spicy': False, 'popular': False, 'has_temp': True, 'image': 'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=400&h=300&fit=crop'},
     ]
     
     for item_data in menu_items_data:
@@ -420,8 +483,12 @@ def index():
     return redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute", methods=["POST"])  # Only limit POST (actual login attempts)
 def login():
     if current_user.is_authenticated:
+        # Check if force password change is required
+        if hasattr(current_user, 'force_password_change') and current_user.force_password_change:
+            return redirect(url_for('change_password'))
         return redirect(url_for('dashboard'))
     
     if request.method == 'POST':
@@ -439,6 +506,11 @@ def login():
             login_user(user, remember=remember)
             user.last_login = utc_now()
             db.session.commit()
+            
+            # Check if force password change is required
+            if hasattr(user, 'force_password_change') and user.force_password_change:
+                flash('Silakan ganti password default Anda untuk keamanan.', 'warning')
+                return redirect(url_for('change_password'))
             
             next_page = request.args.get('next')
             flash(f'Selamat datang, {user.full_name or user.username}!', 'success')
@@ -507,6 +579,53 @@ def logout():
     logout_user()
     flash('Anda telah logout.', 'info')
     return redirect(url_for('login'))
+
+
+@app.route('/change-password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    """Force password change page for first-time login or security requirements"""
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        # Validate current password
+        if not current_user.check_password(current_password):
+            flash('Password saat ini salah!', 'danger')
+            return render_template('auth/change_password.html')
+        
+        # Validate new password
+        if len(new_password) < 8:
+            flash('Password baru minimal 8 karakter!', 'danger')
+            return render_template('auth/change_password.html')
+        
+        if new_password != confirm_password:
+            flash('Password baru tidak cocok!', 'danger')
+            return render_template('auth/change_password.html')
+        
+        # Check password strength (at least 1 uppercase, 1 lowercase, 1 number)
+        import re
+        if not re.search(r'[A-Z]', new_password):
+            flash('Password harus mengandung minimal 1 huruf besar!', 'danger')
+            return render_template('auth/change_password.html')
+        if not re.search(r'[a-z]', new_password):
+            flash('Password harus mengandung minimal 1 huruf kecil!', 'danger')
+            return render_template('auth/change_password.html')
+        if not re.search(r'[0-9]', new_password):
+            flash('Password harus mengandung minimal 1 angka!', 'danger')
+            return render_template('auth/change_password.html')
+        
+        # Update password
+        current_user.set_password(new_password)
+        current_user.force_password_change = False
+        db.session.commit()
+        
+        flash('Password berhasil diubah!', 'success')
+        return redirect(url_for('dashboard'))
+    
+    return render_template('auth/change_password.html')
+
 
 # Dashboard
 @app.route('/dashboard')
@@ -784,6 +903,7 @@ def api_update_cart_settings():
 # ============================================
 
 @app.route('/api/order', methods=['POST'])
+@limiter.limit("60 per minute")  # Protect order creation from abuse
 def api_create_order():
     try:
         data = request.json
@@ -865,6 +985,15 @@ def api_create_order():
         
         db.session.add(payment)
         db.session.commit()
+        
+        # Create notification for new order
+        total_formatted = f"{order.total:,}".replace(',', '.')
+        create_notification(
+            type='order_new',
+            title='Pesanan Baru!',
+            message=f'Order #{order.order_number} - {customer_name or "Guest"} - Rp {total_formatted}',
+            data={'order_id': order.id, 'order_number': order.order_number}
+        )
         
         # Update table status
         if table_id:
@@ -1049,12 +1178,31 @@ def api_create_midtrans_payment():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@csrf.exempt
 @app.route('/api/payment/midtrans/callback', methods=['POST'])
+@limiter.limit("30 per minute")  # Rate limit webhook calls
 def api_midtrans_callback():
+    """Handle Midtrans payment notification webhook - CSRF exempt for external service"""
     try:
         data = request.json
         order_id = data.get('order_id')
         transaction_status = data.get('transaction_status')
+        
+        # Verify signature for security (Midtrans sends signature_key)
+        signature_key = data.get('signature_key')
+        server_key = app.config.get('MIDTRANS_SERVER_KEY', '')
+        
+        if signature_key and server_key:
+            import hashlib
+            # Midtrans signature: SHA512(order_id+status_code+gross_amount+server_key)
+            status_code = data.get('status_code', '')
+            gross_amount = data.get('gross_amount', '')
+            expected_signature = hashlib.sha512(
+                f"{order_id}{status_code}{gross_amount}{server_key}".encode()
+            ).hexdigest()
+            
+            if signature_key != expected_signature:
+                return jsonify({'error': 'Invalid signature'}), 403
         
         # Find payment by midtrans_order_id
         payment = Payment.query.filter_by(midtrans_order_id=order_id).first()
@@ -1066,8 +1214,26 @@ def api_midtrans_callback():
                 payment.status = 'paid'
                 payment.paid_at = utc_now()
                 payment.order.status = 'processing'
+                
+                # Create success notification
+                amount_formatted = f"{payment.amount:,}".replace(',', '.')
+                create_notification(
+                    type='payment_success',
+                    title='Pembayaran Berhasil!',
+                    message=f'Order #{payment.order.order_number} - Rp {amount_formatted}',
+                    data={'order_id': payment.order_id, 'payment_id': payment.id}
+                )
+                
             elif transaction_status in ['deny', 'cancel', 'expire']:
                 payment.status = 'failed'
+                
+                # Create failure notification
+                create_notification(
+                    type='payment_failed',
+                    title='Pembayaran Gagal',
+                    message=f'Order #{payment.order.order_number} - Status: {transaction_status}',
+                    data={'order_id': payment.order_id, 'payment_id': payment.id}
+                )
             
             db.session.commit()
         
@@ -1136,7 +1302,7 @@ def update_profile():
 
 @app.route('/profile/change-password', methods=['POST'])
 @login_required
-def change_password():
+def profile_change_password():
     current_password = request.form.get('current_password')
     new_password = request.form.get('new_password')
     confirm_password = request.form.get('confirm_password')
@@ -1219,6 +1385,37 @@ def admin_menu():
     menu_items = MenuItem.query.all()
     return render_template('admin/menu.html', categories=categories, menu_items=menu_items)
 
+def allowed_file(filename):
+    """Check if file extension is allowed"""
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in app.config.get('ALLOWED_EXTENSIONS', {'png', 'jpg', 'jpeg', 'gif', 'webp'})
+
+def save_uploaded_image(file):
+    """Save uploaded image and return the URL path"""
+    if file and file.filename and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        # Add timestamp to avoid duplicate names
+        import time
+        filename = f"{int(time.time())}_{filename}"
+        
+        # Ensure upload folder exists
+        upload_folder = app.config.get('UPLOAD_FOLDER', 'uploads')
+        menu_upload_folder = os.path.join(upload_folder, 'menu')
+        os.makedirs(menu_upload_folder, exist_ok=True)
+        
+        filepath = os.path.join(menu_upload_folder, filename)
+        file.save(filepath)
+        
+        # Return URL path
+        return f"/uploads/menu/{filename}"
+    return None
+
+@app.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    """Serve uploaded files"""
+    upload_folder = app.config.get('UPLOAD_FOLDER', 'uploads')
+    return send_file(os.path.join(upload_folder, filename))
+
 @app.route('/admin/menu/create', methods=['POST'])
 @login_required
 @role_required('admin', 'manager')
@@ -1231,7 +1428,19 @@ def admin_create_menu():
     is_popular = request.form.get('is_popular') == 'on'
     has_spicy_option = request.form.get('has_spicy_option') == 'on'
     has_temperature_option = request.form.get('has_temperature_option') == 'on'
-    image = request.form.get('image')
+    
+    # Handle image: URL or upload
+    image = request.form.get('image_url', '').strip()
+    if 'image_file' in request.files:
+        file = request.files['image_file']
+        if file and file.filename:
+            uploaded_path = save_uploaded_image(file)
+            if uploaded_path:
+                image = uploaded_path
+    
+    # Default image if none provided
+    if not image:
+        image = "https://via.placeholder.com/300x200?text=No+Image"
     
     menu_item = MenuItem(
         code=code,
@@ -1251,12 +1460,97 @@ def admin_create_menu():
     flash('Menu berhasil ditambahkan!', 'success')
     return redirect(url_for('admin_menu'))
 
+
+@app.route('/admin/menu/<int:id>/edit', methods=['POST'])
+@login_required
+@role_required('admin', 'manager')
+def admin_edit_menu(id):
+    menu_item = MenuItem.query.get_or_404(id)
+    
+    menu_item.code = request.form.get('code', menu_item.code)
+    menu_item.name = request.form.get('name', menu_item.name)
+    menu_item.price = int(request.form.get('price', menu_item.price))
+    menu_item.category_id = request.form.get('category_id', menu_item.category_id)
+    menu_item.description = request.form.get('description', menu_item.description)
+    menu_item.is_popular = request.form.get('is_popular') == 'on'
+    menu_item.is_available = request.form.get('is_available') == 'on'
+    menu_item.has_spicy_option = request.form.get('has_spicy_option') == 'on'
+    menu_item.has_temperature_option = request.form.get('has_temperature_option') == 'on'
+    
+    # Handle image: URL or upload
+    image_url = request.form.get('image_url', '').strip()
+    if image_url:
+        menu_item.image = image_url
+    
+    if 'image_file' in request.files:
+        file = request.files['image_file']
+        if file and file.filename:
+            uploaded_path = save_uploaded_image(file)
+            if uploaded_path:
+                menu_item.image = uploaded_path
+    
+    db.session.commit()
+    
+    flash('Menu berhasil diperbarui!', 'success')
+    return redirect(url_for('admin_menu'))
+
+
+@app.route('/admin/menu/<int:id>/delete', methods=['POST'])
+@login_required
+@role_required('admin', 'manager')
+def admin_delete_menu(id):
+    menu_item = MenuItem.query.get_or_404(id)
+    
+    # Check if menu item is used in any orders
+    order_items = OrderItem.query.filter_by(menu_item_id=id).first()
+    if order_items:
+        flash('Menu tidak dapat dihapus karena sudah digunakan dalam pesanan. Nonaktifkan saja jika tidak ingin ditampilkan.', 'error')
+        return redirect(url_for('admin_menu'))
+    
+    # Delete from cart items first
+    CartItem.query.filter_by(menu_item_id=id).delete()
+    
+    db.session.delete(menu_item)
+    db.session.commit()
+    
+    flash('Menu berhasil dihapus!', 'success')
+    return redirect(url_for('admin_menu'))
+
+
+@app.route('/api/menu/<int:id>')
+@login_required
+@role_required('admin', 'manager')
+def api_get_menu_item(id):
+    """Get menu item data for edit form"""
+    menu_item = MenuItem.query.get_or_404(id)
+    return jsonify({
+        'id': menu_item.id,
+        'code': menu_item.code,
+        'name': menu_item.name,
+        'price': menu_item.price,
+        'category_id': menu_item.category_id,
+        'description': menu_item.description or '',
+        'image': menu_item.image or '',
+        'is_popular': menu_item.is_popular,
+        'is_available': menu_item.is_available,
+        'has_spicy_option': menu_item.has_spicy_option,
+        'has_temperature_option': menu_item.has_temperature_option
+    })
+
 @app.route('/admin/printer')
 @login_required
 @role_required('admin', 'manager')
 def admin_printer():
-    """Printer management page"""
-    return render_template('admin/printer.html')
+    """Redirect to Printer Station - the dedicated printer page"""
+    return redirect(url_for('printer_station'))
+
+
+@app.route('/printer-station')
+@login_required
+def printer_station():
+    """Dedicated printer station page - keep this open for reliable printing"""
+    return render_template('printer_station.html')
+
 
 @app.route('/admin/tables')
 @login_required
@@ -1687,6 +1981,288 @@ def save_printer_status():
         'printer_id': printer_id
     })
 
+
+# ============================================
+# SERVER-SIDE PRINT QUEUE API
+# ============================================
+
+@app.route('/api/pending-prints')
+@login_required
+def get_pending_prints():
+    """Get all pending prints from server-side queue"""
+    pending = PendingPrint.query.filter_by(status='pending').order_by(PendingPrint.created_at).all()
+    return jsonify({
+        'success': True,
+        'pending_prints': [p.to_dict() for p in pending],
+        'count': len(pending)
+    })
+
+
+@app.route('/api/pending-prints', methods=['POST'])
+@login_required
+def add_pending_print():
+    """Add a new pending print to server-side queue"""
+    data = request.get_json()
+    
+    pending = PendingPrint(
+        order_id=data.get('order_id'),
+        receipt_data=json.dumps(data.get('receipt_data', [])),
+        copies=data.get('copies', 3),
+        current_copy=data.get('current_copy', 1),
+        status='pending'
+    )
+    
+    db.session.add(pending)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'pending_print': pending.to_dict()
+    })
+
+
+@app.route('/api/pending-prints/<int:print_id>/complete', methods=['POST'])
+@login_required
+def complete_pending_print(print_id):
+    """Mark a pending print as completed"""
+    pending = PendingPrint.query.get_or_404(print_id)
+    pending.status = 'completed'
+    pending.printed_at = utc_now()
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'Print marked as completed'
+    })
+
+
+@app.route('/api/pending-prints/<int:print_id>/fail', methods=['POST'])
+@login_required
+def fail_pending_print(print_id):
+    """Mark a pending print as failed and increment retry count"""
+    data = request.get_json() or {}
+    pending = PendingPrint.query.get_or_404(print_id)
+    
+    pending.retry_count += 1
+    pending.error_message = data.get('error_message', 'Unknown error')
+    
+    # Mark as permanently failed after 5 retries
+    if pending.retry_count >= 5:
+        pending.status = 'failed'
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'retry_count': pending.retry_count,
+        'status': pending.status
+    })
+
+
+@app.route('/api/pending-prints/<int:print_id>', methods=['DELETE'])
+@login_required
+def delete_pending_print(print_id):
+    """Delete a pending print from queue"""
+    pending = PendingPrint.query.get_or_404(print_id)
+    db.session.delete(pending)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'Print deleted from queue'
+    })
+
+
+@app.route('/api/pending-prints/clear', methods=['POST'])
+@login_required
+def clear_pending_prints():
+    """Clear all pending prints"""
+    PendingPrint.query.filter_by(status='pending').delete()
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'All pending prints cleared'
+    })
+
+
+# ============================================
+# USB PRINTER API (Server-Side Printing)
+# ============================================
+
+@app.route('/api/usb-printer/status')
+@login_required
+def usb_printer_status():
+    """Get USB printer status and availability"""
+    if not USB_PRINTING_AVAILABLE:
+        return jsonify({
+            'success': True,
+            'available': False,
+            'connected': False,
+            'message': 'USB printing not available (install python-escpos and pyusb)'
+        })
+    
+    return jsonify({
+        'success': True,
+        'available': True,
+        'connected': usb_printer.connected if usb_printer else False,
+        'printer_info': usb_printer.printer_info if usb_printer else None
+    })
+
+
+@app.route('/api/usb-printer/devices')
+@login_required
+def list_usb_printers():
+    """List available USB printers"""
+    if not USB_PRINTING_AVAILABLE:
+        return jsonify({
+            'success': False,
+            'message': 'USB printing not available',
+            'devices': []
+        })
+    
+    devices = USBPrinterManager.list_usb_devices()
+    return jsonify({
+        'success': True,
+        'devices': devices
+    })
+
+
+@app.route('/api/usb-printer/connect', methods=['POST'])
+@login_required
+def connect_usb_printer():
+    """Connect to USB printer"""
+    if not USB_PRINTING_AVAILABLE:
+        return jsonify({
+            'success': False,
+            'message': 'USB printing not available'
+        })
+    
+    data = request.get_json() or {}
+    vendor_id = data.get('vendor_id')
+    product_id = data.get('product_id')
+    
+    success, message = usb_printer.connect(vendor_id, product_id)
+    
+    return jsonify({
+        'success': success,
+        'message': message,
+        'connected': usb_printer.connected
+    })
+
+
+@app.route('/api/usb-printer/disconnect', methods=['POST'])
+@login_required
+def disconnect_usb_printer():
+    """Disconnect USB printer"""
+    if usb_printer:
+        usb_printer.disconnect()
+    
+    return jsonify({
+        'success': True,
+        'message': 'Disconnected'
+    })
+
+
+@app.route('/api/usb-printer/test', methods=['POST'])
+@login_required
+def test_usb_print():
+    """Test print on USB printer"""
+    if not USB_PRINTING_AVAILABLE or not usb_printer:
+        return jsonify({
+            'success': False,
+            'message': 'USB printer not available'
+        })
+    
+    success, message = usb_printer.test_print()
+    return jsonify({
+        'success': success,
+        'message': message
+    })
+
+
+@app.route('/api/usb-printer/print', methods=['POST'])
+@login_required
+def usb_print_receipt():
+    """Print receipt on USB printer"""
+    if not USB_PRINTING_AVAILABLE or not usb_printer:
+        return jsonify({
+            'success': False,
+            'message': 'USB printer not available'
+        })
+    
+    data = request.get_json()
+    
+    if 'order_data' in data:
+        success, message = usb_printer.print_receipt(data['order_data'])
+    elif 'raw_commands' in data:
+        success, message = usb_printer.print_raw(data['raw_commands'])
+    else:
+        return jsonify({
+            'success': False,
+            'message': 'No print data provided'
+        })
+    
+    return jsonify({
+        'success': success,
+        'message': message
+    })
+
+
+@app.route('/api/usb-printer/print-pending', methods=['POST'])
+@login_required
+def usb_print_pending():
+    """Print all pending receipts using USB printer"""
+    if not USB_PRINTING_AVAILABLE or not usb_printer or not usb_printer.connected:
+        return jsonify({
+            'success': False,
+            'message': 'USB printer not connected'
+        })
+    
+    pending = PendingPrint.query.filter_by(status='pending').order_by(PendingPrint.created_at).all()
+    
+    if not pending:
+        return jsonify({
+            'success': True,
+            'message': 'No pending prints',
+            'printed': 0
+        })
+    
+    printed_count = 0
+    failed_count = 0
+    
+    for item in pending:
+        try:
+            commands = json.loads(item.receipt_data)
+            success, _ = usb_printer.print_raw(commands)
+            
+            if success:
+                item.status = 'completed'
+                item.printed_at = utc_now()
+                printed_count += 1
+            else:
+                item.retry_count += 1
+                if item.retry_count >= 5:
+                    item.status = 'failed'
+                failed_count += 1
+                
+        except Exception as e:
+            item.retry_count += 1
+            item.error_message = str(e)
+            if item.retry_count >= 5:
+                item.status = 'failed'
+            failed_count += 1
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'printed': printed_count,
+        'failed': failed_count,
+        'message': f'{printed_count} receipts printed, {failed_count} failed'
+    })
+
+
 # Reports
 @app.route('/reports')
 @login_required
@@ -1997,6 +2573,143 @@ def reset_database():
         flash(f'Error saat reset database: {str(e)}', 'danger')
     
     return redirect(url_for('dashboard'))
+
+# ========== NOTIFICATION SYSTEM ==========
+@app.route('/api/notifications')
+@login_required
+def api_get_notifications():
+    """Get notifications for current user"""
+    notifications = Notification.query.filter(
+        (Notification.user_id == current_user.id) | (Notification.user_id == None)
+    ).order_by(Notification.created_at.desc()).limit(50).all()
+    
+    unread_count = Notification.query.filter(
+        ((Notification.user_id == current_user.id) | (Notification.user_id == None)),
+        Notification.is_read == False
+    ).count()
+    
+    return jsonify({
+        'notifications': [n.to_dict() for n in notifications],
+        'unread_count': unread_count
+    })
+
+
+@app.route('/api/notifications/<int:notification_id>/read', methods=['POST'])
+@login_required
+def api_mark_notification_read(notification_id):
+    """Mark a notification as read"""
+    notification = Notification.query.get_or_404(notification_id)
+    notification.is_read = True
+    notification.read_at = utc_now()
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/notifications/read-all', methods=['POST'])
+@login_required
+def api_mark_all_notifications_read():
+    """Mark all notifications as read for current user"""
+    Notification.query.filter(
+        ((Notification.user_id == current_user.id) | (Notification.user_id == None)),
+        Notification.is_read == False
+    ).update({'is_read': True, 'read_at': utc_now()}, synchronize_session=False)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+def create_notification(type, title, message, user_id=None, data=None):
+    """Helper function to create a notification"""
+    import json
+    notification = Notification(
+        type=type,
+        title=title,
+        message=message,
+        user_id=user_id,
+        data=json.dumps(data) if data else None
+    )
+    db.session.add(notification)
+    db.session.commit()
+    return notification
+
+
+# ========== PAYMENT GATEWAY ADMIN ==========
+@app.route('/admin/payment-gateway')
+@login_required
+@role_required('admin')
+def admin_payment_gateway():
+    """Payment gateway settings page"""
+    # Get current settings
+    server_key = app.config.get('MIDTRANS_SERVER_KEY', '')
+    client_key = app.config.get('MIDTRANS_CLIENT_KEY', '')
+    is_production = app.config.get('MIDTRANS_IS_PRODUCTION', False)
+    
+    # Mask keys for display
+    masked_server_key = server_key[:8] + '****' + server_key[-4:] if len(server_key) > 12 else '****'
+    masked_client_key = client_key[:8] + '****' + client_key[-4:] if len(client_key) > 12 else '****'
+    
+    return render_template('admin/payment_gateway.html',
+                         masked_server_key=masked_server_key,
+                         masked_client_key=masked_client_key,
+                         is_production=is_production,
+                         is_configured=bool(server_key and client_key),
+                         active_page='admin_payment_gateway')
+
+
+@app.route('/api/payment-gateway/test', methods=['POST'])
+@login_required
+@role_required('admin')
+def api_test_payment_gateway():
+    """Test Midtrans API connection"""
+    import base64
+    import requests
+    
+    server_key = app.config.get('MIDTRANS_SERVER_KEY', '')
+    is_production = app.config.get('MIDTRANS_IS_PRODUCTION', False)
+    
+    if not server_key:
+        return jsonify({
+            'success': False,
+            'message': 'Server Key belum dikonfigurasi'
+        })
+    
+    # Choose the correct API URL
+    if is_production:
+        api_url = 'https://api.midtrans.com/v2/ping'
+    else:
+        api_url = 'https://api.sandbox.midtrans.com/v2/ping'
+    
+    try:
+        # Create auth header
+        auth_string = base64.b64encode(f'{server_key}:'.encode()).decode()
+        headers = {
+            'Authorization': f'Basic {auth_string}',
+            'Accept': 'application/json'
+        }
+        
+        response = requests.get(api_url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            return jsonify({
+                'success': True,
+                'message': f'Koneksi berhasil! Mode: {"Production" if is_production else "Sandbox"}',
+                'environment': 'production' if is_production else 'sandbox'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': f'Koneksi gagal: HTTP {response.status_code}'
+            })
+    except requests.exceptions.Timeout:
+        return jsonify({
+            'success': False,
+            'message': 'Koneksi timeout. Coba lagi nanti.'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        })
+
 
 if __name__ == '__main__':
     os.makedirs('static/css', exist_ok=True)

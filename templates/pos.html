@@ -36,15 +36,15 @@
                 </div>
             </div>
             
-            <!-- User Info & Printer -->
+            <!-- User Info & Printer Station Link -->
             <div class="flex items-center space-x-2 md:space-x-4">
-                <!-- Bluetooth Printer Button -->
-                <button id="printer-status-btn" onclick="connectBluetoothPrinter()" 
+                <!-- Link to Printer Station -->
+                <a href="{{ url_for('printer_station') }}" target="_blank"
                         class="flex items-center space-x-2 px-2 md:px-3 py-2 rounded-xl bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white transition text-sm"
-                        title="Hubungkan printer Bluetooth">
+                        title="Buka Printer Station di tab baru">
                     <i class="fas fa-print"></i>
-                    <span class="hidden lg:inline">Printer</span>
-                </button>
+                    <span class="hidden lg:inline">Printer Station</span>
+                </a>
                 
                 <div class="hidden md:flex items-center space-x-3">
                     <span class="text-sm text-gray-400">{{ current_user.full_name or current_user.username }}</span>
@@ -334,6 +334,19 @@ let appliedDiscount = null; // Store applied discount
 let selectedSpice = 'none';
 let selectedTemp = 'normal';
 
+// XSS Protection - escape HTML entities
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
 // Format currency
 function formatCurrency(num) {
     return 'Rp ' + new Intl.NumberFormat('id-ID').format(num);
@@ -350,61 +363,6 @@ async function loadCart() {
         }
     } catch (error) {
         console.error('Error loading cart:', error);
-    }
-}
-
-// Auto-reconnect printer on page load
-async function autoReconnectPrinter() {
-    try {
-        const response = await fetch('/api/printer-status');
-        const data = await response.json();
-        if (data.success && data.printer_name) {
-            // Show attempting to reconnect status
-            const statusBtn = document.getElementById('printer-status-btn');
-            if (statusBtn) {
-                statusBtn.innerHTML = `<i class="fas fa-print text-yellow-400 animate-pulse"></i> <span class="hidden lg:inline">Menghubungkan...</span>`;
-            }
-            
-            console.log('Attempting to reconnect to:', data.printer_name);
-            
-            // Check if Web Bluetooth is supported
-            if (!navigator.bluetooth) {
-                console.log('Web Bluetooth not supported');
-                updatePrinterStatus(false, data.printer_name, true);
-                return;
-            }
-            
-            // Try to get previously paired devices (Chrome 85+)
-            if (navigator.bluetooth.getDevices) {
-                try {
-                    const devices = await navigator.bluetooth.getDevices();
-                    const savedDevice = devices.find(d => d.name === data.printer_name);
-                    
-                    if (savedDevice) {
-                        console.log('Found saved device, attempting reconnect...');
-                        statusBtn.innerHTML = `<i class="fas fa-print text-yellow-400 animate-pulse"></i> <span class="hidden lg:inline">Menghubungkan...</span>`;
-                        
-                        // Try to connect to saved device
-                        const server = await savedDevice.gatt.connect();
-                        const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
-                        printerCharacteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
-                        connectedPrinter = savedDevice;
-                        
-                        console.log('Auto-reconnected to:', savedDevice.name);
-                        updatePrinterStatus(true, savedDevice.name);
-                        showToast('Printer terhubung otomatis!', 'success');
-                        return;
-                    }
-                } catch (reconnectError) {
-                    console.log('Auto-reconnect failed, showing last known:', reconnectError.message);
-                }
-            }
-            
-            // Show last known printer status (yellow) so user can click to reconnect
-            updatePrinterStatus(false, data.printer_name, true);
-        }
-    } catch (error) {
-        console.error('Auto-reconnect failed:', error);
     }
 }
 
@@ -428,7 +386,9 @@ function toggleMobileCart() {
 function updateMobileCartCount() {
     const mobileCartCount = document.getElementById('mobile-cart-count');
     if (mobileCartCount) {
-        const count = cart.reduce((sum, item) => sum + item.quantity, 0);
+        // cart is an object with items array, not an array directly
+        const items = cart.items || [];
+        const count = items.reduce((sum, item) => sum + item.quantity, 0);
         mobileCartCount.textContent = count;
         mobileCartCount.style.display = count > 0 ? 'flex' : 'none';
     }
@@ -437,8 +397,6 @@ function updateMobileCartCount() {
 // Initialize cart on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadCart();
-    loadPrinterStatusFromDatabase();
-    autoReconnectPrinter();
     updateMobileCartCount();
 });
 
@@ -577,23 +535,23 @@ function updateCartUI() {
             <div class="glass rounded-xl p-3">
                 <div class="flex items-start justify-between">
                     <div class="flex-1">
-                        <h4 class="font-medium text-sm">${item.name}</h4>
+                        <h4 class="font-medium text-sm">${escapeHtml(item.name)}</h4>
                         <p class="text-primary-400 text-sm">${formatCurrency(item.price)}</p>
-                        ${item.spice_level ? `<span class="text-xs text-red-400"><i class="fas fa-pepper-hot mr-1"></i>${item.spice_level}</span>` : ''}
-                        ${item.temperature ? `<span class="text-xs text-blue-400 ml-2"><i class="fas fa-thermometer-half mr-1"></i>${item.temperature}</span>` : ''}
-                        ${item.notes ? `<p class="text-xs text-gray-500 mt-1">${item.notes}</p>` : ''}
+                        ${item.spice_level ? `<span class="text-xs text-red-400"><i class="fas fa-pepper-hot mr-1"></i>${escapeHtml(item.spice_level)}</span>` : ''}
+                        ${item.temperature ? `<span class="text-xs text-blue-400 ml-2"><i class="fas fa-thermometer-half mr-1"></i>${escapeHtml(item.temperature)}</span>` : ''}
+                        ${item.notes ? `<p class="text-xs text-gray-500 mt-1">${escapeHtml(item.notes)}</p>` : ''}
                     </div>
-                    <button onclick="removeFromCart(${item.id})" class="text-red-400 hover:text-red-300">
+                    <button onclick="removeFromCart(${parseInt(item.id)})" class="text-red-400 hover:text-red-300">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 <div class="flex items-center justify-between mt-2">
                     <div class="flex items-center space-x-2">
-                        <button onclick="updateQuantity(${item.id}, -1)" class="w-8 h-8 md:w-7 md:h-7 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 active:bg-white/30">
+                        <button onclick="updateQuantity(${parseInt(item.id)}, -1)" class="w-8 h-8 md:w-7 md:h-7 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 active:bg-white/30">
                             <i class="fas fa-minus text-xs"></i>
                         </button>
-                        <span class="w-8 text-center font-medium">${item.quantity}</span>
-                        <button onclick="updateQuantity(${item.id}, 1)" class="w-8 h-8 md:w-7 md:h-7 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 active:bg-white/30">
+                        <span class="w-8 text-center font-medium">${parseInt(item.quantity)}</span>
+                        <button onclick="updateQuantity(${parseInt(item.id)}, 1)" class="w-8 h-8 md:w-7 md:h-7 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 active:bg-white/30">
                             <i class="fas fa-plus text-xs"></i>
                         </button>
                     </div>
@@ -642,6 +600,7 @@ async function clearCart() {
 
 // Update item quantity via API
 async function updateQuantity(itemId, delta) {
+    if (!cart.items) return;
     const item = cart.items.find(i => i.id === itemId);
     if (!item) return;
     
@@ -1042,44 +1001,41 @@ class PrintQueue {
 // Global print queue instance
 const printQueue = new PrintQueue();
 
-// AUTO PRINT 3x - Print receipt 3 times (3 layer) via Bluetooth
+// AUTO PRINT 3x - Save receipt to server queue for Printer Station
+// Printer Station will poll and print automatically
 async function autoPrintReceipt3x(order) {
-    // Check if printer is connected
-    if (!connectedPrinter || !printerCharacteristic) {
-        console.log('Printer tidak terhubung, skip auto print');
-        return;
-    }
+    console.log('Menyimpan struk ke antrian server untuk order:', order.order_number);
     
-    // Tambahkan ke print queue untuk mencegah konflik
-    printQueue.add(async () => {
-        showToast('Mencetak struk 3 lembar...', 'info');
-        
-        try {
-            for (let i = 1; i <= 3; i++) {
-                // Build receipt with copy number and fancy design
-                const commands = buildReceiptCommandsWithCopy(order, i, 3);
-                
-                // Send commands in chunks (BLE has packet size limits)
-                const chunkSize = 100;
-                for (let j = 0; j < commands.length; j += chunkSize) {
-                    const chunk = commands.slice(j, j + chunkSize);
-                    await printerCharacteristic.writeValue(new Uint8Array(chunk));
-                    // Small delay between chunks
-                    await new Promise(resolve => setTimeout(resolve, 50));
-                }
-                
-                // Delay 800ms between prints to prevent overlap
-                if (i < 3) {
-                    await new Promise(resolve => setTimeout(resolve, 800));
-                }
-            }
+    // Save to server queue - Printer Station will handle printing
+    try {
+        // Build receipt commands for 3 copies
+        for (let i = 1; i <= 3; i++) {
+            const commands = buildReceiptCommandsWithCopy(order, i, 3);
             
-            showToast('Struk berhasil dicetak 3 lembar!', 'success');
-        } catch (error) {
-            console.error('Auto print error:', error);
-            showToast('Gagal mencetak otomatis: ' + error.message, 'error');
+            // Save to server pending queue
+            const response = await fetch('/api/pending-prints', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    order_id: order.id,
+                    receipt_data: commands,
+                    copies: 3,
+                    current_copy: i
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Gagal menyimpan struk ke antrian');
+            }
         }
-    });
+        
+        showToast('📤 Struk dikirim ke Printer Station (3 lembar)', 'success');
+        console.log('Struk berhasil disimpan ke antrian server');
+        
+    } catch (error) {
+        console.error('Error saving receipt to queue:', error);
+        showToast('⚠️ Gagal mengirim struk: ' + error.message, 'error');
+    }
 }
 
 // Build ESC/POS receipt commands with copy number and FANCY DESIGN
@@ -1237,20 +1193,40 @@ function buildReceiptCommandsWithCopy(order, copyNum, totalCopies) {
 }
 
 function printReceipt() {
-    // Check if Bluetooth printing is available
-    if ('bluetooth' in navigator && connectedPrinter) {
-        printViaBluetooth();
+    // Send to Printer Station via server queue
+    if (currentReceiptOrder) {
+        saveReceiptToServerQueue(currentReceiptOrder, 1);
+        showToast('📤 Struk dikirim ke Printer Station', 'info');
     } else {
-        // Fallback to browser print
+        // Fallback to browser print for preview
         window.print();
     }
 }
 
-// Bluetooth Printer Support
-let connectedPrinter = null;
-let printerCharacteristic = null;
+// Save receipt to server queue for Printer Station
+async function saveReceiptToServerQueue(order, copies = 1) {
+    try {
+        for (let i = 1; i <= copies; i++) {
+            const commands = buildReceiptCommandsWithCopy(order, i, copies);
+            
+            await fetch('/api/pending-prints', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    order_id: order.id,
+                    receipt_data: commands,
+                    copies: copies,
+                    current_copy: i
+                })
+            });
+        }
+        console.log(`Receipt saved to server queue (${copies} copies)`);
+    } catch (error) {
+        console.error('Error saving receipt to queue:', error);
+    }
+}
 
-// ESC/POS Commands for thermal printers
+// ESC/POS Commands for thermal printers (used for building receipt data)
 const ESC_POS = {
     INIT: [0x1B, 0x40],                          // Initialize printer
     ALIGN_CENTER: [0x1B, 0x61, 0x01],            // Center align
@@ -1263,178 +1239,6 @@ const ESC_POS = {
     FEED_LINE: [0x0A],                           // Line feed
     FEED_LINES: (n) => [0x1B, 0x64, n],          // Feed n lines
 };
-
-// Connect to Bluetooth Printer
-async function connectBluetoothPrinter() {
-    try {
-        // Show loading
-        showToast('Mencari printer Bluetooth...', 'info');
-        
-        // Request Bluetooth device - common thermal printer services
-        const device = await navigator.bluetooth.requestDevice({
-            acceptAllDevices: true,
-            optionalServices: [
-                '000018f0-0000-1000-8000-00805f9b34fb', // Common thermal printer service
-                '49535343-fe7d-4ae5-8fa9-9fafd205e455', // Common SPP-like service
-                'e7810a71-73ae-499d-8c15-faa9aef0c3f2', // Another common service
-            ]
-        });
-        
-        showToast(`Terhubung ke: ${device.name || 'Printer'}`, 'info');
-        
-        // Connect to GATT server
-        const server = await device.gatt.connect();
-        
-        // Try to get the service
-        let service = null;
-        const serviceUUIDs = [
-            '000018f0-0000-1000-8000-00805f9b34fb',
-            '49535343-fe7d-4ae5-8fa9-9fafd205e455',
-            'e7810a71-73ae-499d-8c15-faa9aef0c3f2',
-        ];
-        
-        for (const uuid of serviceUUIDs) {
-            try {
-                service = await server.getPrimaryService(uuid);
-                if (service) break;
-            } catch (e) {
-                continue;
-            }
-        }
-        
-        if (!service) {
-            // Get all services and try the first one
-            const services = await server.getPrimaryServices();
-            if (services.length > 0) {
-                service = services[0];
-            }
-        }
-        
-        if (!service) {
-            throw new Error('Tidak dapat menemukan service printer');
-        }
-        
-        // Get characteristics
-        const characteristics = await service.getCharacteristics();
-        
-        // Find writable characteristic
-        for (const char of characteristics) {
-            if (char.properties.write || char.properties.writeWithoutResponse) {
-                printerCharacteristic = char;
-                break;
-            }
-        }
-        
-        if (!printerCharacteristic) {
-            throw new Error('Tidak dapat menemukan karakteristik tulis');
-        }
-        
-        connectedPrinter = device;
-        
-        // Update UI
-        updatePrinterStatus(true, device.name);
-        showToast(`Printer terhubung: ${device.name || 'Bluetooth Printer'}`, 'success');
-        
-        // Handle disconnect
-        device.addEventListener('gattserverdisconnected', () => {
-            connectedPrinter = null;
-            printerCharacteristic = null;
-            updatePrinterStatus(false);
-            showToast('Printer terputus', 'warning');
-        });
-        
-    } catch (error) {
-        console.error('Bluetooth error:', error);
-        if (error.name === 'NotFoundError') {
-            showToast('Tidak ada printer yang dipilih', 'warning');
-        } else if (error.name === 'NotSupportedError') {
-            showToast('Bluetooth tidak didukung di browser ini. Gunakan Chrome/Edge.', 'error');
-        } else {
-            showToast('Gagal menghubungkan printer: ' + error.message, 'error');
-        }
-    }
-}
-
-// Update printer status indicator
-function updatePrinterStatus(connected, printerName = '', isLastKnown = false) {
-    const statusBtn = document.getElementById('printer-status-btn');
-    if (statusBtn) {
-        if (connected) {
-            statusBtn.innerHTML = `<i class="fas fa-print text-green-400"></i> <span class="hidden md:inline">${printerName || 'Terhubung'}</span>`;
-            statusBtn.classList.remove('text-gray-400', 'text-yellow-400');
-            statusBtn.classList.add('text-green-400');
-            // Save to database when connected
-            savePrinterToDatabase(printerName);
-        } else if (isLastKnown && printerName) {
-            // Show last known printer (yellow status)
-            statusBtn.innerHTML = `<i class="fas fa-print text-yellow-400"></i> <span class="hidden md:inline">${printerName} (Klik untuk hubungkan)</span>`;
-            statusBtn.classList.remove('text-gray-400', 'text-green-400');
-            statusBtn.classList.add('text-yellow-400');
-        } else {
-            statusBtn.innerHTML = '<i class="fas fa-print"></i> <span class="hidden md:inline">Printer</span>';
-            statusBtn.classList.remove('text-green-400', 'text-yellow-400');
-            statusBtn.classList.add('text-gray-400');
-        }
-    }
-}
-
-// Save printer name to database
-async function savePrinterToDatabase(printerName) {
-    try {
-        await fetch('/api/printer-status', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ printer_name: printerName })
-        });
-    } catch (error) {
-        console.error('Failed to save printer status:', error);
-    }
-}
-
-// Load printer status from database on page load
-async function loadPrinterStatusFromDatabase() {
-    try {
-        const response = await fetch('/api/printer-status');
-        const data = await response.json();
-        if (data.success && data.printer_name) {
-            // Show last known printer with yellow status
-            updatePrinterStatus(false, data.printer_name, true);
-        }
-    } catch (error) {
-        console.error('Failed to load printer status:', error);
-    }
-}
-
-// Print via Bluetooth
-async function printViaBluetooth() {
-    if (!connectedPrinter || !printerCharacteristic) {
-        showToast('Printer tidak terhubung', 'error');
-        return;
-    }
-    
-    try {
-        // Get current receipt data
-        const receiptContent = document.getElementById('receipt-content');
-        const order = getReceiptData(); // We'll need to store order data
-        
-        // Build ESC/POS commands
-        const commands = buildReceiptCommands(order || parseReceiptFromDOM(receiptContent));
-        
-        // Send commands in chunks (BLE has packet size limits)
-        const chunkSize = 100;
-        for (let i = 0; i < commands.length; i += chunkSize) {
-            const chunk = commands.slice(i, i + chunkSize);
-            await printerCharacteristic.writeValue(new Uint8Array(chunk));
-            // Small delay between chunks
-            await new Promise(resolve => setTimeout(resolve, 50));
-        }
-        
-        showToast('Struk berhasil dicetak!', 'success');
-    } catch (error) {
-        console.error('Print error:', error);
-        showToast('Gagal mencetak: ' + error.message, 'error');
-    }
-}
 
 // Store current order for printing
 let currentReceiptOrder = null;

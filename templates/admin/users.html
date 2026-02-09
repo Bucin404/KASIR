@@ -68,6 +68,7 @@
                         </td>
                         <td class="p-4">
                             <form action="{{ url_for('admin_toggle_user', user_id=user.id) }}" method="POST" class="inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <button type="submit" class="p-2 rounded-lg {% if user.is_active %}bg-red-500/20 hover:bg-red-500/30 text-red-400{% else %}bg-green-500/20 hover:bg-green-500/30 text-green-400{% endif %}">
                                     <i class="fas {% if user.is_active %}fa-ban{% else %}fa-check{% endif %}"></i>
                                 </button>
@@ -86,6 +87,7 @@
     <div class="glass-card rounded-2xl p-6 w-full max-w-md">
         <h3 class="text-lg font-semibold mb-4">Tambah Pengguna Baru</h3>
         <form action="{{ url_for('admin_create_user') }}" method="POST" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div>
                 <label class="text-sm text-gray-400 mb-1 block">Nama Lengkap</label>
                 <input type="text" name="full_name" required class="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 px-4 text-white">
@@ -146,6 +148,7 @@
             </ul>
         </div>
         <form action="{{ url_for('reset_database') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <div class="flex space-x-3">
                 <button type="button" onclick="document.getElementById('reset-db-modal').classList.add('hidden')" 
                         class="flex-1 py-2.5 rounded-xl bg-white/10 text-gray-300">Batal</button>

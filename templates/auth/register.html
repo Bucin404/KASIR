@@ -23,6 +23,7 @@
             <h2 class="text-2xl font-semibold text-center mb-6">Registrasi</h2>
             
             <form method="POST" action="{{ url_for('register') }}" class="space-y-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <!-- Full Name -->
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-2">Nama Lengkap</label>

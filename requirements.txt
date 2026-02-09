@@ -3,6 +3,7 @@ Flask-SQLAlchemy
 Flask-Login
 Flask-Migrate
 Flask-WTF
+Flask-Limiter
 Werkzeug
 PyMySQL
 cryptography
@@ -17,3 +18,5 @@ email-validator
 WTForms
 Jinja2
 itsdangerous
+python-escpos
+pyusb
